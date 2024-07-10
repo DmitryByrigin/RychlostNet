@@ -18,6 +18,8 @@ import {useDisclosure} from '@mantine/hooks';
 import {IconBook, IconChartPie3, IconCode, IconCoin, IconFingerprint, IconNotification,} from '@tabler/icons-react';
 import classes from './DashboardHeader.module.css';
 import {UserButton} from "@/components/auth/UserButton/user-button";
+import Link from "next/link";
+
 
 const mockdata = [
     {
@@ -54,16 +56,17 @@ const mockdata = [
 
 
 const tabs = [
-    'Home',
-    'Orders',
-    'Education',
+    {name: 'Home', href: '/dashboard'},
+    {name: 'Orders', href: '/dashboard/orders'},
+    {name: 'Education', href: '/dashboard/education'},
 ];
 
 export function DashboardHeader() {
 
     const items = tabs.map((tab) => (
-        <Tabs.Tab value={tab} key={tab}>
-            {tab}
+        // @ts-ignore
+        <Tabs.Tab value={tab.name} key={tab.name} component={Link} href={tab.href}>
+            {tab.name}
         </Tabs.Tab>
     ));
 
@@ -97,10 +100,17 @@ export function DashboardHeader() {
             <Burger opened={drawerOpened} onClick={toggleDrawer} hiddenFrom="sm" style={{display: "flex"}} ml={"xs"}/>
 
             <Container className={classes.logoSection} size="md">
-                <img src="/images/logo.png" alt="Logo" width={35}/>
-                <Text size="xl" style={{marginLeft: rem(10), fontWeight: 700, fontStyle: 'italic'}}>
+                <Link href="/dashboard">
+                    <div>
+                        <img src={"/images/logo.png"} alt="Logo" width={35}/>
+                    </div>
+                </Link>
+
+                <Text component={Link} href="/dashboard" size="xl"
+                      style={{marginLeft: rem(10), fontWeight: 700, fontStyle: 'italic'}}>
                     RýchlosťNet
                 </Text>
+
             </Container>
 
 

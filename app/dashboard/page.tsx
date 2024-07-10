@@ -5,7 +5,7 @@ import {UserAccount} from "@/components/dashboard/User/UserAccount";
 const UserPage = () => {
   return (
     <DashboardLayout>
-      <UserAccount />
+      <h1>Dashboard</h1>
     </DashboardLayout>
   );
 };

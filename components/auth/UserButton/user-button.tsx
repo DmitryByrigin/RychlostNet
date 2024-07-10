@@ -2,16 +2,7 @@
 
 
 import {useCurrentUser} from "@/hooks/use-current-user";
-import {
-    Avatar,
-    Button,
-    Container,
-    Group,
-    Menu,
-    rem,
-    Text,
-    UnstyledButton,
-} from "@mantine/core";
+import {Avatar, Button, Container, Group, Menu, rem, Text, UnstyledButton,} from "@mantine/core";
 import classes from "./UserButton.module.css";
 import cx from "clsx";
 import {IconChevronDown, IconLogout, IconSettings} from "@tabler/icons-react";
@@ -102,6 +93,8 @@ export const UserButton = () => {
 
                         <Menu.Label>Settings</Menu.Label>
                         <Menu.Item
+                            component={Link}
+                            href="/dashboard/user"
                             leftSection={
                                 <IconSettings style={{width: rem(16), height: rem(16)}} stroke={1.5}/>
                             }
