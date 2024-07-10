@@ -1,0 +1,146 @@
+Index: .idea/inspectionProfiles/Project_Default.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><component name=\"InspectionProjectProfileManager\">\r\n  <profile version=\"1.0\">\r\n    <option name=\"myName\" value=\"Project Default\" />\r\n    <inspection_tool class=\"Eslint\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"true\" />\r\n  </profile>\r\n</component>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/inspectionProfiles/Project_Default.xml b/.idea/inspectionProfiles/Project_Default.xml
+--- a/.idea/inspectionProfiles/Project_Default.xml	(revision 54d7d784de8b7487a2603b8013041e22a9394c43)
++++ b/.idea/inspectionProfiles/Project_Default.xml	(date 1720620629484)
+@@ -2,5 +2,16 @@
+   <profile version="1.0">
+     <option name="myName" value="Project Default" />
+     <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
++    <inspection_tool class="HtmlUnknownAttribute" enabled="true" level="WARNING" enabled_by_default="true">
++      <option name="myValues">
++        <value>
++          <list size="2">
++            <item index="0" class="java.lang.String" itemvalue="src" />
++            <item index="1" class="java.lang.String" itemvalue="alt" />
++          </list>
++        </value>
++      </option>
++      <option name="myCustomValuesEnabled" value="true" />
++    </inspection_tool>
+   </profile>
+ </component>
+\ No newline at end of file
+Index: app/dashboard/DashboardHeader/DashboardHeader.tsx
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>'use client';\r\n\r\nimport {\r\n    Burger,\r\n    Container,\r\n    Divider,\r\n    Drawer,\r\n    Group,\r\n    rem,\r\n    ScrollArea,\r\n    Tabs,\r\n    Text,\r\n    ThemeIcon,\r\n    UnstyledButton,\r\n    useMantineTheme,\r\n} from '@mantine/core';\r\nimport {useDisclosure} from '@mantine/hooks';\r\nimport {IconBook, IconChartPie3, IconCode, IconCoin, IconFingerprint, IconNotification,} from '@tabler/icons-react';\r\nimport classes from './DashboardHeader.module.css';\r\nimport {UserButton} from \"@/components/auth/UserButton/user-button\";\r\n\r\nconst mockdata = [\r\n    {\r\n        icon: IconCode,\r\n        title: 'Open source',\r\n        description: 'This Pokémon’s cry is very loud and distracting',\r\n    },\r\n    {\r\n        icon: IconCoin,\r\n        title: 'Free for everyone',\r\n        description: 'The fluid of Smeargle’s tail secretions changes',\r\n    },\r\n    {\r\n        icon: IconBook,\r\n        title: 'Documentation',\r\n        description: 'Yanma is capable of seeing 360 degrees without',\r\n    },\r\n    {\r\n        icon: IconFingerprint,\r\n        title: 'Security',\r\n        description: 'The shell’s rounded shape and the grooves on its.',\r\n    },\r\n    {\r\n        icon: IconChartPie3,\r\n        title: 'Analytics',\r\n        description: 'This Pokémon uses its flying ability to quickly chase',\r\n    },\r\n    {\r\n        icon: IconNotification,\r\n        title: 'Notifications',\r\n        description: 'Combusken battles with the intensely hot flames it spews',\r\n    },\r\n];\r\n\r\n\r\nconst tabs = [\r\n    'Home',\r\n    'Orders',\r\n    'Education',\r\n];\r\n\r\nexport function DashboardHeader() {\r\n\r\n    const items = tabs.map((tab) => (\r\n        <Tabs.Tab value={tab} key={tab}>\r\n            {tab}\r\n        </Tabs.Tab>\r\n    ));\r\n\r\n\r\n    const [drawerOpened, {toggle: toggleDrawer, close: closeDrawer}] = useDisclosure(false);\r\n    const [linksOpened, {toggle: toggleLinks}] = useDisclosure(false);\r\n    const theme = useMantineTheme();\r\n\r\n    const links = mockdata.map((item) => (\r\n        <UnstyledButton className={classes.subLink} key={item.title}>\r\n            <Group wrap=\"nowrap\" align=\"flex-start\">\r\n                <ThemeIcon size={34} variant=\"default\" radius=\"md\">\r\n                    <item.icon style={{width: rem(22), height: rem(22)}} color={theme.colors.blue[6]}/>\r\n                </ThemeIcon>\r\n                <div>\r\n                    <Text size=\"sm\" fw={500}>\r\n                        {item.title}\r\n                    </Text>\r\n                    <Text size=\"xs\" c=\"dimmed\">\r\n                        {item.description}\r\n                    </Text>\r\n                </div>\r\n            </Group>\r\n        </UnstyledButton>\r\n    ));\r\n\r\n    return (\r\n\r\n        <div className={classes.header}>\r\n\r\n            <Burger opened={drawerOpened} onClick={toggleDrawer} hiddenFrom=\"sm\" style={{display: \"flex\"}} ml={\"xs\"}/>\r\n\r\n            <Container className={classes.logoSection} size=\"md\">\r\n                <img src=\"/images/logo.png\" alt=\"Logo\" width={35}/>\r\n                <Text size=\"xl\" style={{marginLeft: rem(10), fontWeight: 700, fontStyle: 'italic'}}>\r\n                    RýchlosťNet\r\n                </Text>\r\n            </Container>\r\n\r\n\r\n            <Group h=\"100%\" gap={0} visibleFrom=\"sm\">\r\n                <Tabs\r\n                    defaultValue=\"Home\"\r\n                    variant=\"outline\"\r\n                    visibleFrom=\"sm\"\r\n                    classNames={{\r\n                        root: classes.tabs,\r\n                        list: classes.tabsList,\r\n                        tab: classes.tab,\r\n                    }}\r\n                >\r\n                    <Tabs.List>{items}</Tabs.List>\r\n                </Tabs>\r\n            </Group>\r\n\r\n            <UserButton/>\r\n\r\n\r\n            <Drawer\r\n                opened={drawerOpened}\r\n                onClose={closeDrawer}\r\n                size=\"100%\"\r\n                padding=\"md\"\r\n                title=\"Navigation\"\r\n                hiddenFrom=\"sm\"\r\n                zIndex={1000000}\r\n            >\r\n                <ScrollArea h={`calc(100vh - ${rem(80)})`} mx=\"-md\">\r\n                    <Divider my=\"sm\"/>\r\n                    <Tabs\r\n                        defaultValue=\"Home\"\r\n                        variant=\"outline\"\r\n                        classNames={{\r\n                            root: classes.tabs,\r\n                            list: classes.tabsList,\r\n                            tab: classes.tab,\r\n                        }}\r\n                    >\r\n                        <Tabs.List>{items}</Tabs.List>\r\n                    </Tabs>\r\n                    <Divider my=\"sm\"/>\r\n                </ScrollArea>\r\n            </Drawer>\r\n\r\n        </div>\r\n    );\r\n\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/dashboard/DashboardHeader/DashboardHeader.tsx b/app/dashboard/DashboardHeader/DashboardHeader.tsx
+--- a/app/dashboard/DashboardHeader/DashboardHeader.tsx	(revision 54d7d784de8b7487a2603b8013041e22a9394c43)
++++ b/app/dashboard/DashboardHeader/DashboardHeader.tsx	(date 1720620650504)
+@@ -18,6 +18,8 @@
+ import {IconBook, IconChartPie3, IconCode, IconCoin, IconFingerprint, IconNotification,} from '@tabler/icons-react';
+ import classes from './DashboardHeader.module.css';
+ import {UserButton} from "@/components/auth/UserButton/user-button";
++import Link from "next/link";
++
+ 
+ const mockdata = [
+     {
+@@ -54,16 +56,17 @@
+ 
+ 
+ const tabs = [
+-    'Home',
+-    'Orders',
+-    'Education',
++    {name: 'Home', href: '/dashboard'},
++    {name: 'Orders', href: '/dashboard/orders'},
++    {name: 'Education', href: '/dashboard/education'},
+ ];
+ 
+ export function DashboardHeader() {
+ 
+     const items = tabs.map((tab) => (
+-        <Tabs.Tab value={tab} key={tab}>
+-            {tab}
++        // @ts-ignore
++        <Tabs.Tab value={tab.name} key={tab.name} component={Link} href={tab.href}>
++            {tab.name}
+         </Tabs.Tab>
+     ));
+ 
+@@ -97,10 +100,17 @@
+             <Burger opened={drawerOpened} onClick={toggleDrawer} hiddenFrom="sm" style={{display: "flex"}} ml={"xs"}/>
+ 
+             <Container className={classes.logoSection} size="md">
+-                <img src="/images/logo.png" alt="Logo" width={35}/>
+-                <Text size="xl" style={{marginLeft: rem(10), fontWeight: 700, fontStyle: 'italic'}}>
++                <Link href="/dashboard">
++                    <div>
++                        <img src={"/images/logo.png"} alt="Logo" width={35}/>
++                    </div>
++                </Link>
++
++                <Text component={Link} href="/dashboard" size="xl"
++                      style={{marginLeft: rem(10), fontWeight: 700, fontStyle: 'italic'}}>
+                     RýchlosťNet
+                 </Text>
++
+             </Container>
+ 
+ 
+Index: components/auth/UserButton/user-button.tsx
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>'use client'\r\n\r\n\r\nimport {useCurrentUser} from \"@/hooks/use-current-user\";\r\nimport {\r\n    Avatar,\r\n    Button,\r\n    Container,\r\n    Group,\r\n    Menu,\r\n    rem,\r\n    Text,\r\n    UnstyledButton,\r\n} from \"@mantine/core\";\r\nimport classes from \"./UserButton.module.css\";\r\nimport cx from \"clsx\";\r\nimport {IconChevronDown, IconLogout, IconSettings} from \"@tabler/icons-react\";\r\nimport {useState} from \"react\";\r\nimport {LogoutButton} from \"../logout-button\";\r\nimport Link from \"next/link\";\r\n\r\n\r\nexport const UserButton = () => {\r\n    const [userMenuOpened, setUserMenuOpened] = useState(false);\r\n\r\n    const user = useCurrentUser();\r\n\r\n    return (\r\n        <Container className={classes.mainSection} size=\"md\">\r\n            <Group justify=\"space-between\">\r\n\r\n\r\n                {/*<Burger opened={opened} onClick={toggle} hiddenFrom=\"xs\" size=\"sm\"/>*/}\r\n\r\n                <Menu\r\n                    width={260}\r\n                    position=\"bottom-end\"\r\n                    transitionProps={{transition: 'pop-top-right'}}\r\n                    onClose={() => setUserMenuOpened(false)}\r\n                    onOpen={() => setUserMenuOpened(true)}\r\n                    withinPortal\r\n                >\r\n\r\n                    {user ? (\r\n                        <Menu.Target>\r\n                            <UnstyledButton\r\n                                className={cx(classes.user, {[classes.userActive]: userMenuOpened})}\r\n                            >\r\n                                <Group gap={7}>\r\n                                    <Avatar src={user?.image || null} radius=\"xl\"/>\r\n                                    <Text fw={500} size=\"sm\" lh={1} mr={3}>\r\n                                        {user!.name}\r\n                                    </Text>\r\n                                    <IconChevronDown style={{width: rem(12), height: rem(12)}} stroke={1.5}/>\r\n                                </Group>\r\n                            </UnstyledButton>\r\n                        </Menu.Target>\r\n                    ) : (\r\n                        <Group justify=\"center\" grow px=\"md\">\r\n                            <Link href=\"/\">\r\n                                <Button>\r\n                                    Log in\r\n                                </Button>\r\n                            </Link>\r\n                        </Group>\r\n                    )}\r\n\r\n                    <Menu.Dropdown>\r\n                        {/*    <Menu.Item*/}\r\n                        {/*        leftSection={*/}\r\n                        {/*            <IconHeart*/}\r\n                        {/*                style={{width: rem(16), height: rem(16)}}*/}\r\n                        {/*                color={theme.colors.red[6]}*/}\r\n                        {/*                stroke={1.5}*/}\r\n                        {/*            />*/}\r\n                        {/*        }*/}\r\n                        {/*    >*/}\r\n                        {/*        Liked posts*/}\r\n                        {/*    </Menu.Item>*/}\r\n                        {/*    <Menu.Item*/}\r\n                        {/*        leftSection={*/}\r\n                        {/*            <IconStar*/}\r\n                        {/*                style={{width: rem(16), height: rem(16)}}*/}\r\n                        {/*                color={theme.colors.yellow[6]}*/}\r\n                        {/*                stroke={1.5}*/}\r\n                        {/*            />*/}\r\n                        {/*        }*/}\r\n                        {/*    >*/}\r\n                        {/*        Saved posts*/}\r\n                        {/*    </Menu.Item>*/}\r\n                        {/*    <Menu.Item*/}\r\n                        {/*        leftSection={*/}\r\n                        {/*            <IconMessage*/}\r\n                        {/*                style={{width: rem(16), height: rem(16)}}*/}\r\n                        {/*                color={theme.colors.blue[6]}*/}\r\n                        {/*                stroke={1.5}*/}\r\n                        {/*            />*/}\r\n                        {/*        }*/}\r\n                        {/*    >*/}\r\n                        {/*        Your comments*/}\r\n                        {/*    </Menu.Item>*/}\r\n\r\n                        <Menu.Label>Settings</Menu.Label>\r\n                        <Menu.Item\r\n                            leftSection={\r\n                                <IconSettings style={{width: rem(16), height: rem(16)}} stroke={1.5}/>\r\n                            }\r\n                        >\r\n                            Account settings\r\n                        </Menu.Item>\r\n                        {/*<Menu.Item*/}\r\n                        {/*    leftSection={*/}\r\n                        {/*        <IconSwitchHorizontal style={{width: rem(16), height: rem(16)}} stroke={1.5}/>*/}\r\n                        {/*    }*/}\r\n                        {/*>*/}\r\n                        {/*    Change account*/}\r\n                        {/*</Menu.Item>*/}\r\n                        <LogoutButton>\r\n                            <Menu.Item\r\n                                leftSection={\r\n                                    <IconLogout style={{width: rem(16), height: rem(16)}} stroke={1.5}/>\r\n                                }\r\n                            >\r\n                                Logout\r\n                            </Menu.Item>\r\n                        </LogoutButton>\r\n                        <Menu.Divider/>\r\n\r\n                        {/*<Menu.Label>Danger zone</Menu.Label>*/}\r\n                        {/*<Menu.Item*/}\r\n                        {/*    leftSection={*/}\r\n                        {/*        <IconPlayerPause style={{width: rem(16), height: rem(16)}} stroke={1.5}/>*/}\r\n                        {/*    }*/}\r\n                        {/*>*/}\r\n                        {/*    Pause subscription*/}\r\n                        {/*</Menu.Item>*/}\r\n\r\n                        {/*    <Menu.Item*/}\r\n                        {/*        color=\"red\"*/}\r\n                        {/*        leftSection={<IconTrash style={{width: rem(16), height: rem(16)}} stroke={1.5}/>}*/}\r\n                        {/*    >*/}\r\n                        {/*        Logout*/}\r\n                        {/*    </Menu.Item>*/}\r\n\r\n                    </Menu.Dropdown>\r\n                </Menu>\r\n            </Group>\r\n        </Container>\r\n    )\r\n};\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/components/auth/UserButton/user-button.tsx b/components/auth/UserButton/user-button.tsx
+--- a/components/auth/UserButton/user-button.tsx	(revision 54d7d784de8b7487a2603b8013041e22a9394c43)
++++ b/components/auth/UserButton/user-button.tsx	(date 1720619157336)
+@@ -2,16 +2,7 @@
+ 
+ 
+ import {useCurrentUser} from "@/hooks/use-current-user";
+-import {
+-    Avatar,
+-    Button,
+-    Container,
+-    Group,
+-    Menu,
+-    rem,
+-    Text,
+-    UnstyledButton,
+-} from "@mantine/core";
++import {Avatar, Button, Container, Group, Menu, rem, Text, UnstyledButton,} from "@mantine/core";
+ import classes from "./UserButton.module.css";
+ import cx from "clsx";
+ import {IconChevronDown, IconLogout, IconSettings} from "@tabler/icons-react";
+@@ -102,6 +93,8 @@
+ 
+                         <Menu.Label>Settings</Menu.Label>
+                         <Menu.Item
++                            component={Link}
++                            href="/dashboard/user"
+                             leftSection={
+                                 <IconSettings style={{width: rem(16), height: rem(16)}} stroke={1.5}/>
+                             }
+Index: app/dashboard/page.tsx
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import DashboardLayout from \"@/app/dashboard/DashboardLayout\";\r\nimport {UserAccount} from \"@/components/dashboard/User/UserAccount\";\r\n\r\n\r\nconst UserPage = () => {\r\n  return (\r\n    <DashboardLayout>\r\n      <UserAccount />\r\n    </DashboardLayout>\r\n  );\r\n};\r\n\r\nexport default UserPage;\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/dashboard/page.tsx b/app/dashboard/page.tsx
+--- a/app/dashboard/page.tsx	(revision 54d7d784de8b7487a2603b8013041e22a9394c43)
++++ b/app/dashboard/page.tsx	(date 1720618962590)
+@@ -5,7 +5,7 @@
+ const UserPage = () => {
+   return (
+     <DashboardLayout>
+-      <UserAccount />
++      <h1>Dashboard</h1>
+     </DashboardLayout>
+   );
+ };

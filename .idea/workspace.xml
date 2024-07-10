@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="6e77001e-0a37-439d-a470-1e2c235d7b16" name="Changes" comment="Remove third-party 2FA, enforce on login/registration only" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="TypeScript File" />
+        <option value="TypeScript JSX File" />
+        <option value="CSS File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="feature/two-factor-authentication" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;DmitryByrigin&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">
+    <option name="recentNewPullRequestHead">
+      <RepoCoordinatesHolder>
+        <option name="owner" value="DmitryByrigin" />
+        <option name="repository" value="RychlostNet" />
+      </RepoCoordinatesHolder>
+    </option>
+    <option name="selectedUrlAndAccountId">
+      <UrlAndAccount>
+        <option name="accountId" value="3ced2a40-7bb1-4cd1-bdd0-3c6b570bc817" />
+        <option name="url" value="https://github.com/DmitryByrigin/RychlostNet.git" />
+      </UrlAndAccount>
+    </option>
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 3
+}</component>
+  <component name="ProjectId" id="2i0C5ThJNlZzczT7T72jNegmBdi" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "development",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Study/Year Two/Diplom/Copy of project/RychlostNet",
+    "list.type.of.created.stylesheet": "CSS",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "yarn",
+    "npm.dev.executor": "Run",
+    "settings.editor.selected.configurable": "vcs.Git",
+    "ts.external.directory.path": "C:\\Study\\Year Two\\Diplom\\RychlostNet\\node_modules\\typescript\\lib",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "ChangesTree.GroupingKeys": [
+      "directory"
+    ],
+    "DatabaseDriversLRU": [
+      "postgresql"
+    ]
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\app\auth" />
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\auth\ResetForm" />
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\NewPassword" />
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\auth" />
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\app\auth\new-verification" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\dashboard\User" />
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\NewPassword" />
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\auth\NewVerification" />
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\auth" />
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="dev" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="dev" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="npm.dev" />
+        <item itemvalue="npm.dev" />
+        <item itemvalue="npm.dev" />
+        <item itemvalue="npm.dev" />
+        <item itemvalue="npm.dev" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="6e77001e-0a37-439d-a470-1e2c235d7b16" name="Changes" comment="" />
+      <created>1718617924783</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1718617924783</updated>
+      <workItem from="1718617929744" duration="12780000" />
+      <workItem from="1718648524445" duration="1355000" />
+      <workItem from="1718654094887" duration="1599000" />
+      <workItem from="1718695551729" duration="615000" />
+      <workItem from="1718776908083" duration="9376000" />
+      <workItem from="1718826268060" duration="28116000" />
+      <workItem from="1719131639333" duration="7156000" />
+      <workItem from="1719405555015" duration="592000" />
+      <workItem from="1719411670716" duration="1000" />
+      <workItem from="1719996331130" duration="6000" />
+      <workItem from="1720092306359" duration="3350000" />
+      <workItem from="1720095970048" duration="435000" />
+      <workItem from="1720096534973" duration="377000" />
+      <workItem from="1720096967842" duration="411000" />
+      <workItem from="1720097391605" duration="68000" />
+      <workItem from="1720097467352" duration="107000" />
+      <workItem from="1720097583214" duration="134000" />
+      <workItem from="1720097727082" duration="9709000" />
+      <workItem from="1720111492373" duration="2000" />
+      <workItem from="1720175186412" duration="10874000" />
+      <workItem from="1720269669966" duration="1998000" />
+      <workItem from="1720618859098" duration="1768000" />
+      <workItem from="1720620831611" duration="918000" />
+      <workItem from="1720623149216" duration="298000" />
+    </task>
+    <task id="LOCAL-00001" summary="Initial commit">
+      <option name="closed" value="true" />
+      <created>1718633013868</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1718633013868</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Initial commit">
+      <option name="closed" value="true" />
+      <created>1718633449860</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1718633449860</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Unused item deleted">
+      <option name="closed" value="true" />
+      <created>1718633530028</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1718633530028</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Feature: Implement Email-based Authentication, Registration, and Account Recovery">
+      <option name="closed" value="true" />
+      <created>1720095736829</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1720095736829</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Add two-factor authentication, enhance user page design, and enable password, email, and role updates">
+      <option name="closed" value="true" />
+      <created>1720180985668</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1720180985668</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Add two-factor authentication, enhance user page design, and enable password, email, and role updates">
+      <option name="closed" value="true" />
+      <created>1720181298789</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1720181298789</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Improved header visuals and responsiveness">
+      <option name="closed" value="true" />
+      <created>1720185742713</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1720185742713</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Improved header visuals and responsiveness">
+      <option name="closed" value="true" />
+      <created>1720185811800</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1720185811800</updated>
+    </task>
+    <task id="LOCAL-00009" summary="Remove third-party 2FA, enforce on login/registration only">
+      <option name="closed" value="true" />
+      <created>1720271264180</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1720271264180</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Initial commit" />
+    <MESSAGE value="Unused item deleted" />
+    <MESSAGE value="Feature: Implement Email-based Authentication, Registration, and Account Recovery" />
+    <MESSAGE value="Add two-factor authentication, enhance user page design, and enable password, email, and role updates" />
+    <MESSAGE value="Improved header visuals and responsiveness" />
+    <MESSAGE value="Remove third-party 2FA, enforce on login/registration only" />
+    <option name="LAST_COMMIT_MESSAGE" value="Remove third-party 2FA, enforce on login/registration only" />
+  </component>
+</project>
