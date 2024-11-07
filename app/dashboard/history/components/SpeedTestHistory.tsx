@@ -1,11 +1,13 @@
-import React, {useEffect, useState} from 'react';
-import {ActionIcon, Center, Loader, Table} from '@mantine/core';
-import {SpeedTestHistory} from '@prisma/client'
-import {IconSortAscending, IconSortDescending, IconTrash} from '@tabler/icons-react';
+import React, { useEffect, useState } from 'react';
+import { ActionIcon, Center, Loader, Table } from '@mantine/core';
+import { IconSortAscending, IconSortDescending, IconTrash } from '@tabler/icons-react';
 import classes from '../SpeedTestHistory.module.css';
 
-const SpeedTestHistory: React.FC = () => {
-    const [data, setData] = useState<SpeedTestHistory[]>([]);
+// Используем type-only import для SpeedTestHistory
+import { SpeedTestHistory as SpeedTestHistoryType } from '@prisma/client';
+
+const SpeedTestHistoryComponent: React.FC = () => {
+    const [data, setData] = useState<SpeedTestHistoryType[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -43,28 +45,27 @@ const SpeedTestHistory: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-    try {
-        const response = await fetch(`/api/speedtest/${id}`, {
-            method: "DELETE",
-        });
-        console.log(response);
-        if (!response.ok) {
-            throw new Error('Failed to delete the record');
+        try {
+            const response = await fetch(`/api/speedtest/${id}`, {
+                method: "DELETE",
+            });
+            if (!response.ok) {
+                throw new Error('Failed to delete the record');
+            }
+            setData(data.filter((stat) => stat.id !== id));
+        } catch (error) {
+            if (error instanceof Error) {
+                setError(error.message);
+            } else {
+                setError('An unknown error occurred');
+            }
         }
-        setData(data.filter((stat) => stat.id !== id));
-    } catch (error) {
-        if (error instanceof Error) {
-            setError(error.message);
-        } else {
-            setError('An unknown error occurred');
-        }
-    }
-};
+    };
 
     const sortedData = [...data].sort((a, b) => {
         if (!sortColumn) return 0;
-        const aValue = a[sortColumn as keyof SpeedTestHistory];
-        const bValue = b[sortColumn as keyof SpeedTestHistory];
+        const aValue = a[sortColumn as keyof SpeedTestHistoryType];
+        const bValue = b[sortColumn as keyof SpeedTestHistoryType];
         if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
         return 0;
@@ -72,8 +73,8 @@ const SpeedTestHistory: React.FC = () => {
 
     if (loading) {
         return (
-            <Center style={{height: '100vh'}}>
-                <Loader/>
+            <Center style={{ height: '100vh' }}>
+                <Loader />
             </Center>
         );
     }
@@ -88,27 +89,27 @@ const SpeedTestHistory: React.FC = () => {
                 <Table.Tr>
                     <Table.Th onClick={() => handleSort('timestamp')} className={classes.sortableHeader}>
                         Timestamp {sortColumn === 'timestamp' && (sortDirection === 'asc' ?
-                        <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
+                        <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
                     </Table.Th>
                     <Table.Th onClick={() => handleSort('downloadSpeed')} className={classes.sortableHeader}>
                         Download Speed (Mbps) {sortColumn === 'downloadSpeed' && (sortDirection === 'asc' ?
-                        <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
+                        <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
                     </Table.Th>
                     <Table.Th onClick={() => handleSort('uploadSpeed')} className={classes.sortableHeader}>
                         Upload Speed (Mbps) {sortColumn === 'uploadSpeed' && (sortDirection === 'asc' ?
-                        <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
+                        <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
                     </Table.Th>
                     <Table.Th onClick={() => handleSort('ping')} className={classes.sortableHeader}>
-                        Ping (ms) {sortColumn === 'ping' && (sortDirection === 'asc' ? <IconSortAscending size={16}/> :
-                        <IconSortDescending size={16}/>)}
+                        Ping (ms) {sortColumn === 'ping' && (sortDirection === 'asc' ?
+                        <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
                     </Table.Th>
                     <Table.Th onClick={() => handleSort('location')} className={classes.sortableHeader}>
                         Location {sortColumn === 'location' && (sortDirection === 'asc' ?
-                        <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
+                        <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
                     </Table.Th>
                     <Table.Th onClick={() => handleSort('isp')} className={classes.sortableHeader}>
-                        ISP {sortColumn === 'isp' && (sortDirection === 'asc' ? <IconSortAscending size={16}/> :
-                        <IconSortDescending size={16}/>)}
+                        ISP {sortColumn === 'isp' && (sortDirection === 'asc' ?
+                        <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
                     </Table.Th>
 
                     <Table.Th>
@@ -116,7 +117,6 @@ const SpeedTestHistory: React.FC = () => {
                             Actions
                         </Center>
                     </Table.Th>
-
                 </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -131,7 +131,7 @@ const SpeedTestHistory: React.FC = () => {
                         <Table.Td>
                             <Center>
                                 <ActionIcon color="red" onClick={() => handleDelete(stat.id)}>
-                                    <IconTrash size={16}/>
+                                    <IconTrash size={16} />
                                 </ActionIcon>
                             </Center>
                         </Table.Td>
@@ -142,4 +142,4 @@ const SpeedTestHistory: React.FC = () => {
     );
 };
 
-export default SpeedTestHistory;
+export default SpeedTestHistoryComponent;

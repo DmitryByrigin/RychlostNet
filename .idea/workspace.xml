@@ -4,55 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6e77001e-0a37-439d-a470-1e2c235d7b16" name="Changes" comment="Remove third-party 2FA, enforce on login/registration only">
-      <change afterPath="$PROJECT_DIR$/.idea/RychlostNet.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/jsLinters/eslint.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/generateImage/route.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/getgeolocation/route.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/speedtest/[id]/route.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/speedtest/route.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/history/SpeedTestHistory.module.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/history/components/SpeedTestHistory.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/history/page.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/SpeedTest.module.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/ConnectionsService.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/OperatorService.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/ServerService.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/SpeedTestControls.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/SpeedTestResult.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/StatItem.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/hooks/useFetchGeolocation.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/hooks/useSpeedTest.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/page.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/types/geolocation.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/types/speedTest.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/components/modal/Modal.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/prisma/migrations/20240810132729_add_speed_test_stats/migration.sql" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/prisma/migrations/20240815093412_/migration.sql" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/prisma/migrations/20240815104229_/migration.sql" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/prisma/migrations/20240815104638_/migration.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.eslintrc.json" beforeDir="false" afterPath="$PROJECT_DIR$/.eslintrc.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300/storage_v2/_src_/database/mydatabase.J7NGgg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300/storage_v2/_src_/database/mydatabase.J7NGgg/schema/public.abK9xQ.meta" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dbnavigator.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dbnavigator.xml" afterDir="false" />
+    <list default="true" id="6e77001e-0a37-439d-a470-1e2c235d7b16" name="Changes" comment="Added adaptive design for the homepage">
+      <change afterPath="$PROJECT_DIR$/components/auth/login/page.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/actions/login.ts" beforeDir="false" afterPath="$PROJECT_DIR$/actions/login.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(protected)/_components/navbar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(protected)/admin/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(protected)/admin/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(protected)/client/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(protected)/client/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(protected)/layout.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(protected)/server/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(protected)/server/page.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/auth/login/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/login/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/auth/register/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/register/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/auth/register/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/auth/register/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/history/components/SpeedTestHistory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/history/components/SpeedTestHistory.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/auth/UserButton/UserButton.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/components/auth/UserButton/UserButton.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/auth/UserButton/user-button.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/auth/UserButton/user-button.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/auth/social.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/auth/social.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/prisma/schema.prisma" beforeDir="false" afterPath="$PROJECT_DIR$/prisma/schema.prisma" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/routes.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles/global.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles/global.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/yarn.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,7 +36,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="feature/two-factor-authentication" />
+        <entry key="$PROJECT_DIR$" value="develop" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -86,6 +51,16 @@
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/DmitryByrigin/RychlostNet.git&quot;,
     &quot;accountId&quot;: &quot;3ced2a40-7bb1-4cd1-bdd0-3c6b570bc817&quot;
+  },
+  &quot;recentNewPullRequestHead&quot;: {
+    &quot;server&quot;: {
+      &quot;useHttp&quot;: false,
+      &quot;host&quot;: &quot;github.com&quot;,
+      &quot;port&quot;: null,
+      &quot;suffix&quot;: null
+    },
+    &quot;owner&quot;: &quot;DmitryByrigin&quot;,
+    &quot;repository&quot;: &quot;RychlostNet&quot;
   }
 }</component>
   <component name="MarkdownSettingsMigration">
@@ -112,8 +87,9 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "fixs/deploy-prepair",
     "ignore.virus.scanning.warn.message": "true",
+    "jsx.switch.disabled": "true",
     "last_opened_file_path": "C:/Study/Year Two/Diplom/RychlostNet",
     "list.type.of.created.stylesheet": "CSS",
     "node.js.detected.package.eslint": "true",
@@ -123,7 +99,9 @@
     "node.js.selected.package.standard": "",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "yarn",
+    "npm.build.executor": "Run",
     "npm.dev.executor": "Run",
+    "npm.start.executor": "Run",
     "settings.editor.selected.configurable": "vcs.Git",
     "ts.external.directory.path": "C:\\Study\\Year Two\\Diplom\\RychlostNet\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
@@ -146,14 +124,14 @@
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\app\auth\new-verification" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\auth" />
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\app\api\generateImage" />
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\dashboard\User" />
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\NewPassword" />
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\auth\NewVerification" />
-      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\auth" />
     </key>
   </component>
-  <component name="RunManager" selected="npm.dev">
+  <component name="RunManager" selected="npm.build">
     <configuration default="true" type="docker-deploy" factoryName="docker-compose.yml" temporary="true">
       <deployment type="docker-compose.yml">
         <settings />
@@ -181,6 +159,16 @@
       </deployment>
       <method v="2" />
     </configuration>
+    <configuration name="build" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="build" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
     <configuration name="dev" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
       <package-json value="$PROJECT_DIR$/package.json" />
       <command value="run" />
@@ -191,9 +179,21 @@
       <envs />
       <method v="2" />
     </configuration>
+    <configuration name="start" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="start" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="npm.build" />
         <item itemvalue="npm.dev" />
+        <item itemvalue="npm.start" />
         <item itemvalue="Docker.docker-compose.yml.db: Compose Deployment" />
         <item itemvalue="Docker.docker-compose.yml: Compose Deployment" />
       </list>
@@ -283,7 +283,8 @@
       <workItem from="1730728154161" duration="26000" />
       <workItem from="1730728196949" duration="7817000" />
       <workItem from="1730743312406" duration="16000" />
-      <workItem from="1730963582429" duration="2164000" />
+      <workItem from="1730963582429" duration="10914000" />
+      <workItem from="1730991490439" duration="1011000" />
     </task>
     <task id="LOCAL-00001" summary="Initial commit">
       <option name="closed" value="true" />
@@ -357,7 +358,15 @@
       <option name="project" value="LOCAL" />
       <updated>1720271264180</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Added adaptive design for the homepage">
+      <option name="closed" value="true" />
+      <created>1730976561020</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1730976561020</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -382,6 +391,7 @@
     <MESSAGE value="Add two-factor authentication, enhance user page design, and enable password, email, and role updates" />
     <MESSAGE value="Improved header visuals and responsiveness" />
     <MESSAGE value="Remove third-party 2FA, enforce on login/registration only" />
-    <option name="LAST_COMMIT_MESSAGE" value="Remove third-party 2FA, enforce on login/registration only" />
+    <MESSAGE value="Added adaptive design for the homepage" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added adaptive design for the homepage" />
   </component>
 </project>

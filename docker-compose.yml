@@ -2,10 +2,20 @@
 version: '3.8'
 services:
   db:
+    networks:
+      - dokploy-network
+    environment:
+        POSTGRES_USER: user
+        POSTGRES_PASSWORD: password
+        POSTGRES_DB: mydatabase
     build: .
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data/
 volumes:
-  postgres_data:
+  postgres_data: null
+
+networks:
+  dokploy-network:
+    external: true
