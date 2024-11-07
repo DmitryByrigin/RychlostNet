@@ -1,6 +1,7 @@
 import AuthenticationForm from "@/app/auth/login/page";
+import SpeedTest from "@/app/dashboard/speedtest/page";
 
 
 export default function HomePage() {
-  return <AuthenticationForm />;
+  return <SpeedTest />;
 }

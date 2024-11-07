@@ -101,7 +101,7 @@ export default function AuthenticationForm(props: PaperProps) {
         <Center style={{height: '100vh'}}>
             <Paper radius="md" p="xl" withBorder {...paperProps}>
                 <Text size="lg" fw={500}>
-                    Welcome to RýchlosťNet, login with
+                    Welcome to <Text component={Link} href="/" style={{ fontWeight: 700, color: '#1c7ed6' }}>RýchlosťNet</Text>, login with
                 </Text>
 
 

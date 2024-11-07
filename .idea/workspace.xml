@@ -4,7 +4,56 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6e77001e-0a37-439d-a470-1e2c235d7b16" name="Changes" comment="Remove third-party 2FA, enforce on login/registration only" />
+    <list default="true" id="6e77001e-0a37-439d-a470-1e2c235d7b16" name="Changes" comment="Remove third-party 2FA, enforce on login/registration only">
+      <change afterPath="$PROJECT_DIR$/.idea/RychlostNet.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/jsLinters/eslint.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/generateImage/route.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/getgeolocation/route.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/speedtest/[id]/route.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/speedtest/route.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/history/SpeedTestHistory.module.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/history/components/SpeedTestHistory.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/history/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/SpeedTest.module.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/ConnectionsService.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/OperatorService.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/ServerService.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/SpeedTestControls.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/SpeedTestResult.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/StatItem.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/hooks/useFetchGeolocation.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/hooks/useSpeedTest.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/types/geolocation.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/dashboard/speedtest/types/speedTest.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/components/modal/Modal.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/prisma/migrations/20240810132729_add_speed_test_stats/migration.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/prisma/migrations/20240815093412_/migration.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/prisma/migrations/20240815104229_/migration.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/prisma/migrations/20240815104638_/migration.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.eslintrc.json" beforeDir="false" afterPath="$PROJECT_DIR$/.eslintrc.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300/storage_v2/_src_/database/mydatabase.J7NGgg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300/storage_v2/_src_/database/mydatabase.J7NGgg/schema/public.abK9xQ.meta" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dbnavigator.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dbnavigator.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/actions/login.ts" beforeDir="false" afterPath="$PROJECT_DIR$/actions/login.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/auth/login/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/login/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/auth/register/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/register/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.module.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/auth/UserButton/UserButton.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/components/auth/UserButton/UserButton.module.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/auth/UserButton/user-button.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/auth/UserButton/user-button.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/auth/social.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/auth/social.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/prisma/schema.prisma" beforeDir="false" afterPath="$PROJECT_DIR$/prisma/schema.prisma" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/routes.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/styles/global.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles/global.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/yarn.lock" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -13,9 +62,9 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="CSS File" />
         <option value="TypeScript File" />
         <option value="TypeScript JSX File" />
-        <option value="CSS File" />
       </list>
     </option>
   </component>
@@ -33,20 +82,12 @@
     &quot;assignee&quot;: &quot;DmitryByrigin&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">
-    <option name="recentNewPullRequestHead">
-      <RepoCoordinatesHolder>
-        <option name="owner" value="DmitryByrigin" />
-        <option name="repository" value="RychlostNet" />
-      </RepoCoordinatesHolder>
-    </option>
-    <option name="selectedUrlAndAccountId">
-      <UrlAndAccount>
-        <option name="accountId" value="3ced2a40-7bb1-4cd1-bdd0-3c6b570bc817" />
-        <option name="url" value="https://github.com/DmitryByrigin/RychlostNet.git" />
-      </UrlAndAccount>
-    </option>
-  </component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/DmitryByrigin/RychlostNet.git&quot;,
+    &quot;accountId&quot;: &quot;3ced2a40-7bb1-4cd1-bdd0-3c6b570bc817&quot;
+  }
+}</component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
@@ -55,21 +96,31 @@
   &quot;associatedIndex&quot;: 3
 }</component>
   <component name="ProjectId" id="2i0C5ThJNlZzczT7T72jNegmBdi" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "ASKED_ADD_EXTERNAL_FILES": "true",
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Docker.docker-compose.yml.db: Compose Deployment.executor": "Run",
+    "Docker.docker-compose.yml: Compose Deployment.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "development",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "main",
     "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "C:/Study/Year Two/Diplom/Copy of project/RychlostNet",
+    "last_opened_file_path": "C:/Study/Year Two/Diplom/RychlostNet",
     "list.type.of.created.stylesheet": "CSS",
     "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.standard": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.standard": "",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "yarn",
     "npm.dev.executor": "Run",
@@ -95,14 +146,41 @@
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\app\auth\new-verification" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Study\Year Two\Diplom\RychlostNet\app\api\generateImage" />
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\dashboard\User" />
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\NewPassword" />
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\auth\NewVerification" />
       <recent name="C:\Study\Year Two\Diplom\RychlostNet\components\auth" />
-      <recent name="C:\Study\Year Two\Diplom\RychlostNet\components" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="npm.dev">
+    <configuration default="true" type="docker-deploy" factoryName="docker-compose.yml" temporary="true">
+      <deployment type="docker-compose.yml">
+        <settings />
+      </deployment>
+      <method v="2" />
+    </configuration>
+    <configuration name="docker-compose.yml: Compose Deployment" type="docker-deploy" factoryName="docker-compose.yml" temporary="true" server-name="Docker">
+      <deployment type="docker-compose.yml">
+        <settings>
+          <option name="sourceFilePath" value="docker-compose.yml" />
+        </settings>
+      </deployment>
+      <method v="2" />
+    </configuration>
+    <configuration name="docker-compose.yml.db: Compose Deployment" type="docker-deploy" factoryName="docker-compose.yml" temporary="true" server-name="Docker">
+      <deployment type="docker-compose.yml">
+        <settings>
+          <option name="services">
+            <list>
+              <option value="db" />
+            </list>
+          </option>
+          <option name="sourceFilePath" value="docker-compose.yml" />
+        </settings>
+      </deployment>
+      <method v="2" />
+    </configuration>
     <configuration name="dev" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
       <package-json value="$PROJECT_DIR$/package.json" />
       <command value="run" />
@@ -116,12 +194,17 @@
     <recent_temporary>
       <list>
         <item itemvalue="npm.dev" />
-        <item itemvalue="npm.dev" />
-        <item itemvalue="npm.dev" />
-        <item itemvalue="npm.dev" />
-        <item itemvalue="npm.dev" />
+        <item itemvalue="Docker.docker-compose.yml.db: Compose Deployment" />
+        <item itemvalue="Docker.docker-compose.yml: Compose Deployment" />
       </list>
     </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-WS-241.19416.2" />
+      </set>
+    </attachedChunks>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -154,7 +237,53 @@
       <workItem from="1720269669966" duration="1998000" />
       <workItem from="1720618859098" duration="1768000" />
       <workItem from="1720620831611" duration="918000" />
-      <workItem from="1720623149216" duration="298000" />
+      <workItem from="1720623149216" duration="1140000" />
+      <workItem from="1720624316874" duration="547000" />
+      <workItem from="1720692575317" duration="17130000" />
+      <workItem from="1720889821936" duration="6018000" />
+      <workItem from="1720895912470" duration="6641000" />
+      <workItem from="1720952802646" duration="5566000" />
+      <workItem from="1721049382083" duration="12051000" />
+      <workItem from="1721199175135" duration="367000" />
+      <workItem from="1721199560039" duration="7114000" />
+      <workItem from="1721483970663" duration="12000" />
+      <workItem from="1721485137178" duration="593000" />
+      <workItem from="1721569974932" duration="79000" />
+      <workItem from="1721572374574" duration="17000" />
+      <workItem from="1721572411282" duration="142000" />
+      <workItem from="1721572636508" duration="25000" />
+      <workItem from="1721573938547" duration="5000" />
+      <workItem from="1721577132176" duration="40000" />
+      <workItem from="1721671613573" duration="208000" />
+      <workItem from="1723105823926" duration="8970000" />
+      <workItem from="1723217754170" duration="17480000" />
+      <workItem from="1723289189007" duration="745000" />
+      <workItem from="1723289952520" duration="11920000" />
+      <workItem from="1723544815390" duration="7465000" />
+      <workItem from="1723627803985" duration="1000" />
+      <workItem from="1723708993263" duration="104000" />
+      <workItem from="1723709136343" duration="46000" />
+      <workItem from="1723709194103" duration="48000" />
+      <workItem from="1723709359946" duration="5179000" />
+      <workItem from="1723714657676" duration="710000" />
+      <workItem from="1723715378944" duration="4326000" />
+      <workItem from="1726903422083" duration="10000" />
+      <workItem from="1727413056365" duration="80000" />
+      <workItem from="1729099574181" duration="1756000" />
+      <workItem from="1729408601464" duration="461000" />
+      <workItem from="1729409133539" duration="28000" />
+      <workItem from="1729526613092" duration="17000" />
+      <workItem from="1729608978600" duration="30000" />
+      <workItem from="1729615953811" duration="6000" />
+      <workItem from="1729722942076" duration="2000" />
+      <workItem from="1729787003657" duration="1186000" />
+      <workItem from="1729970129179" duration="5355000" />
+      <workItem from="1730312483276" duration="1000" />
+      <workItem from="1730727942937" duration="144000" />
+      <workItem from="1730728154161" duration="26000" />
+      <workItem from="1730728196949" duration="7817000" />
+      <workItem from="1730743312406" duration="16000" />
+      <workItem from="1730963582429" duration="2164000" />
     </task>
     <task id="LOCAL-00001" summary="Initial commit">
       <option name="closed" value="true" />
@@ -246,6 +375,7 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="Initial commit" />
     <MESSAGE value="Unused item deleted" />
     <MESSAGE value="Feature: Implement Email-based Authentication, Registration, and Account Recovery" />
