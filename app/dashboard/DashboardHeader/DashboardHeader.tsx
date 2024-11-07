@@ -14,11 +14,14 @@ import {
     UnstyledButton,
     useMantineTheme,
 } from '@mantine/core';
-import {useDisclosure} from '@mantine/hooks';
+import {useDisclosure, useMediaQuery} from '@mantine/hooks';
 import {IconBook, IconChartPie3, IconCode, IconCoin, IconFingerprint, IconNotification,} from '@tabler/icons-react';
 import classes from './DashboardHeader.module.css';
 import {UserButton} from "@/components/auth/UserButton/user-button";
 import Link from "next/link";
+import {usePathname} from "next/navigation";
+import {useCurrentUser} from "@/hooks/use-current-user";
+import {useEffect, useState} from "react";
 
 
 const mockdata = [
@@ -55,13 +58,20 @@ const mockdata = [
 ];
 
 
-const tabs = [
-    {name: 'Home', href: '/dashboard'},
-    {name: 'Orders', href: '/dashboard/orders'},
-    {name: 'Education', href: '/dashboard/education'},
-];
-
 export function DashboardHeader() {
+    const pathname = usePathname();
+    const user = useCurrentUser();
+    // const isMobile = useMediaQuery('(max-width: 768px)');
+    // const [userMenuOpened, setUserMenuOpened] = useState(false);
+    const [isMediaQueryEvaluated, setIsMediaQueryEvaluated] = useState(false);
+
+    // useEffect(() => {
+    //     setIsMediaQueryEvaluated(true);
+    // }, [isMobile]);
+    const tabs = [
+        {name: 'Home', href: '/dashboard/speedtest'},
+        ...(user ? [{name: 'History', href: '/dashboard/history'}] : []),
+    ];
 
     const items = tabs.map((tab) => (
         // @ts-ignore
@@ -70,16 +80,19 @@ export function DashboardHeader() {
         </Tabs.Tab>
     ));
 
+    // useEffect(() => {
+    //     setIsMediaQueryEvaluated(true);
+    // }, [isMobile]);
 
-    const [drawerOpened, {toggle: toggleDrawer, close: closeDrawer}] = useDisclosure(false);
-    const [linksOpened, {toggle: toggleLinks}] = useDisclosure(false);
+    const [drawerOpened, { toggle: toggleDrawer, close: closeDrawer }] = useDisclosure(false);
+    const [linksOpened, { toggle: toggleLinks }] = useDisclosure(false);
     const theme = useMantineTheme();
 
     const links = mockdata.map((item) => (
         <UnstyledButton className={classes.subLink} key={item.title}>
             <Group wrap="nowrap" align="flex-start">
                 <ThemeIcon size={34} variant="default" radius="md">
-                    <item.icon style={{width: rem(22), height: rem(22)}} color={theme.colors.blue[6]}/>
+                    <item.icon style={{ width: rem(22), height: rem(22) }} color={theme.colors.blue[6]} />
                 </ThemeIcon>
                 <div>
                     <Text size="sm" fw={500}>
@@ -94,29 +107,26 @@ export function DashboardHeader() {
     ));
 
     return (
-
         <div className={classes.header}>
+            <Burger opened={drawerOpened} onClick={toggleDrawer} hiddenFrom="sm" style={{ display: "flex" }} ml={"xs"} />
+            {/*{isMediaQueryEvaluated && !isMobile && (*/}
+                <Container className={classes.logoSection} size="md" >
+                    <Link href="/dashboard/speedtest">
+                        <div>
+                            <img src={"/images/logo.png"} alt="Logo" width={35} />
+                        </div>
+                    </Link>
 
-            <Burger opened={drawerOpened} onClick={toggleDrawer} hiddenFrom="sm" style={{display: "flex"}} ml={"xs"}/>
-
-            <Container className={classes.logoSection} size="md">
-                <Link href="/dashboard">
-                    <div>
-                        <img src={"/images/logo.png"} alt="Logo" width={35}/>
-                    </div>
-                </Link>
-
-                <Text component={Link} href="/dashboard" size="xl"
-                      style={{marginLeft: rem(10), fontWeight: 700, fontStyle: 'italic'}}>
-                    RýchlosťNet
-                </Text>
-
-            </Container>
+                    <Text component={Link} href="/dashboard/speedtest" size="xl" style={{ marginLeft: rem(10), fontWeight: 700, fontStyle: 'italic' }}>
+                        RýchlosťNet
+                    </Text>
+                </Container>
+            {/*)}*/}
 
 
             <Group h="100%" gap={0} visibleFrom="sm">
                 <Tabs
-                    defaultValue="Home"
+                    value={tabs.find(tab => pathname.startsWith(tab.href))?.name || 'Home'}
                     variant="outline"
                     visibleFrom="sm"
                     classNames={{
@@ -129,8 +139,7 @@ export function DashboardHeader() {
                 </Tabs>
             </Group>
 
-            <UserButton/>
-
+            <UserButton />
 
             <Drawer
                 opened={drawerOpened}
@@ -142,9 +151,9 @@ export function DashboardHeader() {
                 zIndex={1000000}
             >
                 <ScrollArea h={`calc(100vh - ${rem(80)})`} mx="-md">
-                    <Divider my="sm"/>
+                    <Divider my="sm" />
                     <Tabs
-                        defaultValue="Home"
+                        value={tabs.find(tab => pathname.startsWith(tab.href))?.name || 'Home'}
                         variant="outline"
                         classNames={{
                             root: classes.tabs,
@@ -154,11 +163,9 @@ export function DashboardHeader() {
                     >
                         <Tabs.List>{items}</Tabs.List>
                     </Tabs>
-                    <Divider my="sm"/>
+                    <Divider my="sm" />
                 </ScrollArea>
             </Drawer>
-
         </div>
     );
-
 }

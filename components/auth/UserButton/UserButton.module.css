@@ -1,7 +1,31 @@
 .mainSection {
     padding-bottom: var(--mantine-spacing-sm);
+    /*padding-right: 0;*/
+    /*margin: 0;*/
+    margin-right: 10%;
+}
+
+.mobileMargin {
+    margin-right: 0;
 }
 
 .m_811560b9.mantine-Button-label {
     overflow: visible !important;
 }
+
+
+@media (max-width: 768px) {
+    .username {
+        display: none;
+    }
+
+    .userButtonContainer {
+        margin-right: 0;
+        margin-left: 0;
+    }
+}
+
+
+
+
+

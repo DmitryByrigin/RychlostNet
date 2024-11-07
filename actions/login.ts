@@ -106,7 +106,7 @@ export const login = async (
     await signIn("credentials", {
       email,
       password,
-      redirectTo: callbackUrl || "/dashboard",
+      redirectTo: callbackUrl || "/dashboard/speedtest",
     })
   } catch (error) {
     if (error instanceof AuthError) {

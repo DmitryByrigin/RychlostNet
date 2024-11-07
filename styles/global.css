@@ -1,3 +1,13 @@
 .m_811560b9.mantine-Button-label {
     overflow: visible !important;
 }
+
+/*@media (max-width: 768px) {*/
+/*    .m_7485cace {*/
+/*        margin-inline: 0 !important;*/
+/*    }*/
+/*}*/
+
+.tabler-icon-chevron-down {
+    display: none !important;
+}
