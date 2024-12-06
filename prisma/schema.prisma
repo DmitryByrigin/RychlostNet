@@ -83,12 +83,14 @@ model TwoFactorConfirmation {
 }
 
 model SpeedTestHistory {
-  id            String   @id @default(cuid())
-  timestamp     DateTime @default(now())
-  downloadSpeed Float
-  uploadSpeed   Float
-  ping          Float
-  location      String
-  isp           String
-  userId        String
+  id             String   @id @default(cuid())
+  timestamp      DateTime @default(now())
+  downloadSpeed  Float
+  uploadSpeed    Float
+  ping           Float
+  userLocation   String
+  isp            String
+  serverName     String?
+  serverLocation String?
+  userId         String
 }

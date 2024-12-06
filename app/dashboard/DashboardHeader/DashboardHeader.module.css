@@ -4,6 +4,7 @@
     align-items: flex-start;
     margin-bottom: var(--mantine-spacing-sm);
     cursor: pointer;
+    margin-left: 0;
     /*margin-left: 10%;*/
 
 }

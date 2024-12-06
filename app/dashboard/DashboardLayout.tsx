@@ -12,7 +12,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({children}) => {
         <>
 
             <DashboardHeader/>
-            <Container size="xl">
+            <Container size="full">
                 {children}
             </Container>
         </>

@@ -13,6 +13,10 @@
     overflow: visible !important;
 }
 
+.userButtonContainer {
+    margin-right: 0;
+}
+
 
 @media (max-width: 768px) {
     .username {

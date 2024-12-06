@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UnstyledButton, Text, Anchor, Select } from '@mantine/core';
+import React, { useState, useEffect } from 'react';
+import { Anchor, Select, Text, UnstyledButton } from '@mantine/core';
 import { IconWorld } from '@tabler/icons-react';
 import CustomModal from '@/components/modal/Modal';
 import classes from '../SpeedTest.module.css';
@@ -7,6 +7,7 @@ import classes from '../SpeedTest.module.css';
 interface Server {
     name: string;
     sponsor: string | string[];
+    url: string;
 }
 
 interface GeolocationData {
@@ -21,8 +22,41 @@ interface ServerServiceProps {
     setCurrentSponsor: (sponsor: string) => void;
 }
 
-const ServerService: React.FC<ServerServiceProps> = ({ currentServer, currentSponsor, geolocationData, setCurrentServer, setCurrentSponsor }) => {
+const ServerService: React.FC<ServerServiceProps> = ({
+                                                         currentServer,
+                                                         currentSponsor,
+                                                         geolocationData,
+                                                         setCurrentServer,
+                                                         setCurrentSponsor
+                                                     }) => {
     const [openModal, setOpenModal] = useState(false);
+    const [filteredServers, setFilteredServers] = useState<Server[]>([]);
+
+    useEffect(() => {
+        const checkServerAvailability = async (server: Server) => {
+            try {
+                const response = await fetch(`${server.url}/speedtest/server-info`, { method: 'HEAD', timeout: 5000 });
+                return response.ok;
+            } catch (error) {
+                console.log(`Error checking server ${server.url}: ${error.message}`);
+                return false;
+            }
+        };
+
+        const filterServers = async () => {
+            if (geolocationData) {
+                const availableServers = await Promise.all(
+                    geolocationData.servers.map(async (server) => {
+                        const isAvailable = await checkServerAvailability(server);
+                        return isAvailable ? server : null;
+                    })
+                );
+                setFilteredServers(availableServers.filter((server) => server !== null) as Server[]);
+            }
+        };
+
+        filterServers();
+    }, [geolocationData]);
 
     const serverDisplayName = (server: Server) => {
         if (Array.isArray(server.sponsor)) {
@@ -50,26 +84,30 @@ const ServerService: React.FC<ServerServiceProps> = ({ currentServer, currentSpo
                             label="Servers close to you:"
                             placeholder={serverDisplayName({ name: currentServer, sponsor: currentSponsor })}
                             value={serverDisplayName({ name: currentServer, sponsor: currentSponsor })}
-                            data={geolocationData.servers.flatMap((server: Server) => {
+                            data={filteredServers.flatMap((server: Server) => {
                                 if (Array.isArray(server.sponsor)) {
-                                    return server.sponsor.map((s: string) => `${server.name} - ${s}`);
+                                    return server.sponsor.map((s: string) => ({
+                                        value: `${server.name} - ${s}`,
+                                        label: `${server.name} - ${s}`
+                                    }));
                                 }
-                                return `${server.name} - ${server.sponsor}`;
+                                return {
+                                    value: `${server.name} - ${server.sponsor}`,
+                                    label: `${server.name} - ${server.sponsor}`
+                                };
                             })}
                             searchable
                             className={classes.selectMargin}
                             onChange={(value: string | null) => {
                                 if (value) {
-                                    const selectedServer = geolocationData.servers.find((server: Server) => {
-                                        if (Array.isArray(server.sponsor)) {
-                                            return server.sponsor.some((s: string) => `${server.name} - ${s}` === value);
-                                        }
-                                        return `${server.name} - ${server.sponsor}` === value;
+                                    const selectedServer = filteredServers.find((server: Server) => {
+                                        const fullName = `${server.name} - ${server.sponsor}`;
+                                        return fullName === value;
                                     });
                                     if (selectedServer) {
                                         const [, selectedSponsor] = value.split(' - ');
-                                        setCurrentServer(selectedServer.name);
-                                        setCurrentSponsor(selectedSponsor);
+                                        setCurrentServer(selectedServer.name); // Обновление текущего сервера
+                                        setCurrentSponsor(selectedSponsor); // Обновление текущего спонсора
                                     }
                                 }
                                 setOpenModal(false);

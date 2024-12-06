@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from '@mantine/core';
+import { Button, Center } from '@mantine/core';
 import classes from '../SpeedTest.module.css';
 
 interface SpeedTestControlsProps {
@@ -17,15 +17,18 @@ export const SpeedTestControls: React.FC<SpeedTestControlsProps> = ({ isTesting,
     };
 
     return (
-        <Button
-            mb="lg"
-            className={`${classes.speedTestButton} ${isLoading ? classes.gradientBackground + ' ' + classes.testingAnimation : ''}`}
-            size="lg"
-            radius="xl"
-            onClick={handleClick}
-            disabled={isLoading}
-        >
-            {isLoading ? '' : 'Check'}
-        </Button>
+        <Center style={{ overflow: 'hidden', width: '100%' }}>
+            <Button
+                mb="lg"
+                className={`${classes.speedTestButton} ${isLoading ? classes.gradientBackground + ' ' + classes.testingAnimation : ''}`}
+                size="lg"
+                radius="xl"
+                onClick={handleClick}
+                disabled={isLoading}
+                fullWidth
+            >
+                {isLoading ? '' : 'Check'}
+            </Button>
+        </Center>
     );
 };

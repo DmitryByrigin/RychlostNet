@@ -4,24 +4,10 @@
     gap: 16px;
 }
 
-.speedTestButton {
-    position: relative;
-    overflow: visible;
-    width: 20rem;
-    height: 20rem;
-    border-radius: 50%;
-    background-color: #007bff;
-    border: none;
-    color: white;
-    cursor: pointer;
-    font-size: 2rem;
-    z-index: 2;
-    will-change: transform, opacity, box-shadow;
-    box-shadow: 0 0 8px rgba(0, 123, 255, 0.7),
-    0 0 20px rgba(0, 123, 255, 0.5),
-    0 0 40px rgba(0, 123, 255, 0.3);
-    transition: background-color 0.5s, box-shadow 0.5s; /* Ensure transition is applied */
-}
+
+
+
+
 
 .gradientBackground {
     background: conic-gradient(from 0.5turn at 50% 50%, #6a11cb 0%, #2575fc 100%);
@@ -178,3 +164,32 @@
     justify-content: flex-start;
     text-align: center;
 }
+
+
+.speedTestButton {
+    position: relative;
+    overflow: hidden; /* Ensure no overflow */
+    width: 20rem;
+    max-width: 100%; /* Ensure it fits within the viewport */
+    height: 20rem;
+    border-radius: 50%;
+    background-color: #007bff;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 2rem;
+    z-index: 2;
+    will-change: transform, opacity, box-shadow;
+    /*box-shadow: 0 0 8px rgba(0, 123, 255, 0.7),*/
+    /*0 0 20px rgba(0, 123, 255, 0.5),*/
+    /*0 0 40px rgba(0, 123, 255, 0.3);*/
+    transition: background-color 0.5s, box-shadow 0.5s;
+}
+
+.speedTestButton:focus, .speedTestButton:active, .speedTestButton:hover {
+    /*outline: none;*/
+    /*background-color: #007bff;*/
+    box-shadow: none; /* Remove the blue outline */
+
+}
+

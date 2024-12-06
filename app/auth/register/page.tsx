@@ -1,13 +1,14 @@
 import {Center} from "@mantine/core";
 import AuthenticationForm from "@/components/auth/login/page";
+import RegisterPage from "@/components/auth/register/page";
 
 
-const LoginPage = () => {
+const RegisterForm = () => {
     return (
         <Center style={{height: '100vh'}}>
-            <AuthenticationForm/>
+            <RegisterPage/>
         </Center>
     );
 };
 
-export default LoginPage;
+export default RegisterForm;
