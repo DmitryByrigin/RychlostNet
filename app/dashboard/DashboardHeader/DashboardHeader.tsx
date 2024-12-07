@@ -108,7 +108,7 @@ export function DashboardHeader() {
 
     return (
         <div className={classes.header}>
-            <Burger opened={drawerOpened} onClick={toggleDrawer} hiddenFrom="sm" style={{ display: "flex" }} ml={"xs"} />
+            <Burger opened={drawerOpened} onClick={toggleDrawer} hiddenFrom="sm" style={{ display: "flex" }} p={0} ml={"xs"} />
             {/*{isMediaQueryEvaluated && !isMobile && (*/}
                 <Container className={classes.logoSection} size="md" >
                     <Link href="/dashboard/speedtest">

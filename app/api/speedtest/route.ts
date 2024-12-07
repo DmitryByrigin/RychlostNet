@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { auth } from '@/auth'; // Import authorization
+import { db } from '@/lib/db';
 
 const prisma = new PrismaClient();
 
@@ -52,6 +53,17 @@ export async function POST(req: NextRequest) {
     }
 }
 
+
+export async function DELETE(req: NextRequest) {
+    try {
+        console.log('Deleting all records');
+        const result = await db.speedTestHistory.deleteMany({});
+        return new NextResponse(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } catch (error) {
+        console.error('Error deleting records:', error);
+        return new NextResponse(JSON.stringify({ error: 'Internal Server Error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+}
 
 
 export async function GET(req: NextRequest) {

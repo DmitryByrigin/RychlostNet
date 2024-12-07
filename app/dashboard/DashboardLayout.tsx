@@ -10,9 +10,9 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({children}) => {
     return (
         <>
-
+            <Container size="100rem">
             <DashboardHeader/>
-            <Container size="full">
+
                 {children}
             </Container>
         </>

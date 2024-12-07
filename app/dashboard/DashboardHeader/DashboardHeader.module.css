@@ -2,7 +2,7 @@
     display: flex;
     flex-direction: row;
     align-items: flex-start;
-    margin-bottom: var(--mantine-spacing-sm);
+    margin-bottom: 10px;
     cursor: pointer;
     margin-left: 0;
     /*margin-left: 10%;*/
@@ -13,11 +13,12 @@
     display: flex;
     align-items: flex-end;
     padding-top: var(--mantine-spacing-sm);
-    background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+    /*background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));*/
     border-bottom: rem(1px) solid light-dark(var(--mantine-color-gray-2), transparent);
     margin-bottom: rem(50px);
     flex-direction: row;
     justify-content: space-between;
+    border-radius: var(--mantine-radius-sm);
 }
 
 .mainSection {

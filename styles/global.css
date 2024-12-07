@@ -8,6 +8,14 @@
 /*    }*/
 /*}*/
 
+.DashboardHeader_tab__rosKj {
+    margin-bottom: 0 !important;
+}
+
+.m_3eebeb36:where([data-orientation='horizontal']) {
+    margin-top: 1px !important;
+}
+
 .tabler-icon-chevron-down {
     display: none !important;
 }

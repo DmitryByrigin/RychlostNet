@@ -45,7 +45,7 @@ export const UserButton = () => {
                             className={cx(classes.user, {[classes.userActive]: userMenuOpened})}
                         >
                             <Group gap={7}>
-                                <Avatar src={user?.image || null} radius="xl" alt="avatar"/>
+                             <Avatar src={user?.image || null} radius="xl" alt="avatar"/>
                                 {/*{isMediaQueryEvaluated && !isMobile && (*/}
                                     <Text className={classes.username} fw={500} size="sm" lh={1} mr={3}>
                                         {user!.name}
@@ -101,15 +101,15 @@ export const UserButton = () => {
                     {/*    </Menu.Item>*/}
 
                     <Menu.Label>Settings</Menu.Label>
-                    <Menu.Item
-                        component={Link}
-                        href="/dashboard/user"
-                        leftSection={
-                            <IconSettings style={{width: rem(16), height: rem(16)}} stroke={1.5}/>
-                        }
-                    >
-                        Account settings
-                    </Menu.Item>
+                    {/*<Menu.Item*/}
+                    {/*    component={Link}*/}
+                    {/*    href="/dashboard/user"*/}
+                    {/*    leftSection={*/}
+                    {/*        <IconSettings style={{width: rem(16), height: rem(16)}} stroke={1.5}/>*/}
+                    {/*    }*/}
+                    {/*>*/}
+                    {/*    Account settings*/}
+                    {/*</Menu.Item>*/}
                     {/*<Menu.Item*/}
                     {/*    leftSection={*/}
                     {/*        <IconSwitchHorizontal style={{width: rem(16), height: rem(16)}} stroke={1.5}/>*/}

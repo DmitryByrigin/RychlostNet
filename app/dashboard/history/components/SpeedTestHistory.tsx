@@ -1,8 +1,8 @@
-import React, {useEffect, useState} from 'react';
-import {ActionIcon, Center, Loader, ScrollArea, Table} from '@mantine/core';
-import {IconSortAscending, IconSortDescending, IconTrash} from '@tabler/icons-react';
+import React, { useEffect, useState } from 'react';
+import { ActionIcon, Button, Center, Loader, ScrollArea, Table } from '@mantine/core';
+import { IconSortAscending, IconSortDescending, IconTrash } from '@tabler/icons-react';
 import classes from '../SpeedTestHistory.module.css';
-import {SpeedTestHistory as SpeedTestHistoryType} from '@prisma/client';
+import { SpeedTestHistory as SpeedTestHistoryType } from '@prisma/client';
 
 const SpeedTestHistoryComponent: React.FC = () => {
     const [data, setData] = useState<SpeedTestHistoryType[]>([]);
@@ -61,6 +61,24 @@ const SpeedTestHistoryComponent: React.FC = () => {
         }
     };
 
+    const handleDeleteAll = async () => {
+        try {
+            const response = await fetch(`/api/speedtest`, {
+                method: "DELETE",
+            });
+            if (!response.ok) {
+                throw new Error('Failed to delete all records');
+            }
+            setData([]);
+        } catch (error) {
+            if (error instanceof Error) {
+                setError(error.message);
+            } else {
+                setError('An unknown error occurred');
+            }
+        }
+    };
+
     const sortedData = [...data].sort((a, b) => {
         if (!sortColumn) return 0;
         const aValue = a[sortColumn as keyof SpeedTestHistoryType];
@@ -72,8 +90,8 @@ const SpeedTestHistoryComponent: React.FC = () => {
 
     if (loading) {
         return (
-            <Center style={{height: '100vh'}}>
-                <Loader/>
+            <Center style={{ height: '100vh' }}>
+                <Loader />
             </Center>
         );
     }
@@ -83,72 +101,83 @@ const SpeedTestHistoryComponent: React.FC = () => {
     }
 
     return (
+        <>
+        {data.length > 1 && (
+            <Button color="red" onClick={handleDeleteAll} mb="md">
+                Delete All
+            </Button>
+        )}
         <ScrollArea>
-            <Table>
-                <Table.Thead>
-                    <Table.Tr>
-                        <Table.Th onClick={() => handleSort('timestamp')} className={classes.sortableHeader}>
-                            Timestamp {sortColumn === 'timestamp' && (sortDirection === 'asc' ?
-                            <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
-                        </Table.Th>
-                        <Table.Th onClick={() => handleSort('downloadSpeed')} className={classes.sortableHeader}>
-                            Download Speed (Mbps) {sortColumn === 'downloadSpeed' && (sortDirection === 'asc' ?
-                            <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
-                        </Table.Th>
-                        <Table.Th onClick={() => handleSort('uploadSpeed')} className={classes.sortableHeader}>
-                            Upload Speed (Mbps) {sortColumn === 'uploadSpeed' && (sortDirection === 'asc' ?
-                            <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
-                        </Table.Th>
-                        <Table.Th onClick={() => handleSort('ping')} className={classes.sortableHeader}>
-                            Ping (ms) {sortColumn === 'ping' && (sortDirection === 'asc' ?
-                            <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
-                        </Table.Th>
-                        <Table.Th onClick={() => handleSort('location')} className={classes.sortableHeader}>
-                            User Location {sortColumn === 'location' && (sortDirection === 'asc' ?
-                            <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
-                        </Table.Th>
-                        <Table.Th onClick={() => handleSort('serverName')} className={classes.sortableHeader}>
-                            Server Name {sortColumn === 'serverName' && (sortDirection === 'asc' ?
-                            <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
-                        </Table.Th>
-                        <Table.Th onClick={() => handleSort('serverLocation')} className={classes.sortableHeader}>
-                            Server Location {sortColumn === 'serverLocation' && (sortDirection === 'asc' ?
-                            <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
-                        </Table.Th>
-                        <Table.Th onClick={() => handleSort('isp')} className={classes.sortableHeader}>
-                            ISP {sortColumn === 'isp' && (sortDirection === 'asc' ?
-                            <IconSortAscending size={16}/> : <IconSortDescending size={16}/>)}
-                        </Table.Th>
-                        <Table.Th>
-                            <Center>
-                                Actions
-                            </Center>
-                        </Table.Th>
-                    </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                    {sortedData.map((stat) => (
-                        <Table.Tr key={stat.id}>
-                            <Table.Td>{new Date(stat.timestamp).toLocaleString()}</Table.Td>
-                            <Table.Td>{stat.downloadSpeed.toFixed(2)}</Table.Td>
-                            <Table.Td>{stat.uploadSpeed.toFixed(2)}</Table.Td>
-                            <Table.Td>{stat.ping.toFixed(2)}</Table.Td>
-                            <Table.Td>{stat.userLocation}</Table.Td>
-                            <Table.Td>{stat.serverName}</Table.Td>
-                            <Table.Td>{stat.serverLocation}</Table.Td>
-                            <Table.Td>{stat.isp}</Table.Td>
-                            <Table.Td>
+            {data.length === 0 ? (
+                    <div>No tests available</div>
+            ) : (
+                <Table>
+                    <Table.Thead>
+                        <Table.Tr>
+                            <Table.Th onClick={() => handleSort('timestamp')} className={classes.sortableHeader}>
+                                Timestamp {sortColumn === 'timestamp' && (sortDirection === 'asc' ?
+                                <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
+                            </Table.Th>
+                            <Table.Th onClick={() => handleSort('downloadSpeed')} className={classes.sortableHeader}>
+                                Download Speed (Mbps) {sortColumn === 'downloadSpeed' && (sortDirection === 'asc' ?
+                                <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
+                            </Table.Th>
+                            <Table.Th onClick={() => handleSort('uploadSpeed')} className={classes.sortableHeader}>
+                                Upload Speed (Mbps) {sortColumn === 'uploadSpeed' && (sortDirection === 'asc' ?
+                                <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
+                            </Table.Th>
+                            <Table.Th onClick={() => handleSort('ping')} className={classes.sortableHeader}>
+                                Ping (ms) {sortColumn === 'ping' && (sortDirection === 'asc' ?
+                                <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
+                            </Table.Th>
+                            <Table.Th onClick={() => handleSort('location')} className={classes.sortableHeader}>
+                                User Location {sortColumn === 'location' && (sortDirection === 'asc' ?
+                                <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
+                            </Table.Th>
+                            <Table.Th onClick={() => handleSort('serverName')} className={classes.sortableHeader}>
+                                Server Name {sortColumn === 'serverName' && (sortDirection === 'asc' ?
+                                <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
+                            </Table.Th>
+                            <Table.Th onClick={() => handleSort('serverLocation')} className={classes.sortableHeader}>
+                                Server Location {sortColumn === 'serverLocation' && (sortDirection === 'asc' ?
+                                <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
+                            </Table.Th>
+                            <Table.Th onClick={() => handleSort('isp')} className={classes.sortableHeader}>
+                                ISP {sortColumn === 'isp' && (sortDirection === 'asc' ?
+                                <IconSortAscending size={16} /> : <IconSortDescending size={16} />)}
+                            </Table.Th>
+                            <Table.Th>
                                 <Center>
-                                    <ActionIcon color="red" onClick={() => handleDelete(stat.id)}>
-                                        <IconTrash size={16}/>
-                                    </ActionIcon>
+                                    Actions
                                 </Center>
-                            </Table.Td>
+                            </Table.Th>
                         </Table.Tr>
-                    ))}
-                </Table.Tbody>
-            </Table>
+                    </Table.Thead>
+                    <Table.Tbody>
+                        {sortedData.map((stat) => (
+                            <Table.Tr key={stat.id}>
+                                <Table.Td>{new Date(stat.timestamp).toLocaleString()}</Table.Td>
+                                <Table.Td>{stat.downloadSpeed.toFixed(2)}</Table.Td>
+                                <Table.Td>{stat.uploadSpeed.toFixed(2)}</Table.Td>
+                                <Table.Td>{stat.ping.toFixed(2)}</Table.Td>
+                                <Table.Td>{stat.userLocation}</Table.Td>
+                                <Table.Td>{stat.serverName}</Table.Td>
+                                <Table.Td>{stat.serverLocation}</Table.Td>
+                                <Table.Td>{stat.isp}</Table.Td>
+                                <Table.Td>
+                                    <Center>
+                                        <ActionIcon color="red" onClick={() => handleDelete(stat.id)}>
+                                            <IconTrash size={16} />
+                                        </ActionIcon>
+                                    </Center>
+                                </Table.Td>
+                            </Table.Tr>
+                        ))}
+                    </Table.Tbody>
+                </Table>
+            )}
         </ScrollArea>
+        </>
     );
 };
 

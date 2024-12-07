@@ -5,9 +5,10 @@ import classes from '../SpeedTest.module.css';
 interface SpeedTestControlsProps {
     isTesting: boolean;
     onStartTest: () => void;
+    hasAvailableServers: boolean; // Add this prop
 }
 
-export const SpeedTestControls: React.FC<SpeedTestControlsProps> = ({ isTesting, onStartTest }) => {
+export const SpeedTestControls: React.FC<SpeedTestControlsProps> = ({ isTesting, onStartTest, hasAvailableServers }) => {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleClick = async () => {
@@ -24,7 +25,7 @@ export const SpeedTestControls: React.FC<SpeedTestControlsProps> = ({ isTesting,
                 size="lg"
                 radius="xl"
                 onClick={handleClick}
-                disabled={isLoading}
+                disabled={isLoading || !hasAvailableServers} // Disable if no available servers
                 fullWidth
             >
                 {isLoading ? '' : 'Check'}

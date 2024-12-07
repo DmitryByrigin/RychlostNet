@@ -1,3 +1,4 @@
+// ServerService.tsx
 import React, { useState, useEffect } from 'react';
 import { Anchor, Select, Text, UnstyledButton } from '@mantine/core';
 import { IconWorld } from '@tabler/icons-react';
@@ -20,17 +21,19 @@ interface ServerServiceProps {
     geolocationData: GeolocationData | null;
     setCurrentServer: (server: string) => void;
     setCurrentSponsor: (sponsor: string) => void;
+    setFilteredServers: (servers: Server[]) => void; // Add this prop
 }
 
 const ServerService: React.FC<ServerServiceProps> = ({
-                                                         currentServer,
-                                                         currentSponsor,
-                                                         geolocationData,
-                                                         setCurrentServer,
-                                                         setCurrentSponsor
-                                                     }) => {
+    currentServer,
+    currentSponsor,
+    geolocationData,
+    setCurrentServer,
+    setCurrentSponsor,
+    setFilteredServers // Add this prop
+}) => {
     const [openModal, setOpenModal] = useState(false);
-    const [filteredServers, setFilteredServers] = useState<Server[]>([]);
+    const [localFilteredServers, setLocalFilteredServers] = useState<Server[]>([]);
 
     useEffect(() => {
         const checkServerAvailability = async (server: Server) => {
@@ -51,12 +54,14 @@ const ServerService: React.FC<ServerServiceProps> = ({
                         return isAvailable ? server : null;
                     })
                 );
-                setFilteredServers(availableServers.filter((server) => server !== null) as Server[]);
+                const filtered = availableServers.filter((server) => server !== null) as Server[];
+                setLocalFilteredServers(filtered);
+                setFilteredServers(filtered); // Update parent state
             }
         };
 
         filterServers();
-    }, [geolocationData]);
+    }, [geolocationData, setFilteredServers]);
 
     const serverDisplayName = (server: Server) => {
         if (Array.isArray(server.sponsor)) {
@@ -66,25 +71,33 @@ const ServerService: React.FC<ServerServiceProps> = ({
     };
 
     return (
-        <UnstyledButton className={classes.item}>
+        <UnstyledButton className={classes.item} disabled={localFilteredServers.length === 0}>
             <IconWorld color="indigo" size="1.5rem" />
             <div className={classes.itemText}>
-                <Anchor className={`${classes.iconTitle} ${classes.boldText}`} size="sm" mt={7} href="#" underline="hover">
-                    {currentSponsor}
-                </Anchor>
-                <Text size="xs" mt={7}>
-                    {currentServer}
-                </Text>
-                <Anchor size="xs" mt={7} href="#" underline="hover" onClick={() => setOpenModal(true)}>
-                    Change
-                </Anchor>
-                {geolocationData && (
+                {localFilteredServers.length === 0 ? (
+                    <Text className={`${classes.iconTitle} ${classes.boldText}`} size="sm">
+                        No available servers
+                    </Text>
+                ) : (
+                    <>
+                        <Anchor className={`${classes.iconTitle} ${classes.boldText}`} size="sm" mt={7} href="#" underline="hover">
+                            {currentSponsor}
+                        </Anchor>
+                        <Text size="xs" mt={7}>
+                            {currentServer}
+                        </Text>
+                        <Anchor size="xs" mt={7} href="#" underline="hover" onClick={() => setOpenModal(true)}>
+                            Change
+                        </Anchor>
+                    </>
+                )}
+                {geolocationData && localFilteredServers.length > 0 && (
                     <CustomModal isOpen={openModal} onClose={() => setOpenModal(false)}>
                         <Select
                             label="Servers close to you:"
                             placeholder={serverDisplayName({ name: currentServer, sponsor: currentSponsor })}
                             value={serverDisplayName({ name: currentServer, sponsor: currentSponsor })}
-                            data={filteredServers.flatMap((server: Server) => {
+                            data={localFilteredServers.flatMap((server: Server) => {
                                 if (Array.isArray(server.sponsor)) {
                                     return server.sponsor.map((s: string) => ({
                                         value: `${server.name} - ${s}`,
@@ -100,14 +113,14 @@ const ServerService: React.FC<ServerServiceProps> = ({
                             className={classes.selectMargin}
                             onChange={(value: string | null) => {
                                 if (value) {
-                                    const selectedServer = filteredServers.find((server: Server) => {
+                                    const selectedServer = localFilteredServers.find((server: Server) => {
                                         const fullName = `${server.name} - ${server.sponsor}`;
                                         return fullName === value;
                                     });
                                     if (selectedServer) {
                                         const [, selectedSponsor] = value.split(' - ');
-                                        setCurrentServer(selectedServer.name); // Обновление текущего сервера
-                                        setCurrentSponsor(selectedSponsor); // Обновление текущего спонсора
+                                        setCurrentServer(selectedServer.name);
+                                        setCurrentSponsor(selectedSponsor);
                                     }
                                 }
                                 setOpenModal(false);
