@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Center, Grid, Group, SimpleGrid, Text } from '@mantine/core';
 import { useFetchGeolocation } from './hooks/useFetchGeolocation';
 import { useSpeedTest } from './hooks/useSpeedTest';
@@ -14,14 +14,18 @@ import { IconArrowsDiff, IconDownload, IconUpload } from "@tabler/icons-react";
 import DashboardLayout from "@/app/dashboard/DashboardLayout";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
+interface GeoLocationServer {
+    name: string;
+    location: { city: string; region: string; country: string };
+}
+
 const SpeedTest: React.FC = () => {
     const { geolocationData, currentServer, setCurrentServer, currentSponsor, setCurrentSponsor } = useFetchGeolocation();
     const { uploadSpeed, downloadSpeed, pingStats, isTesting, generateAndMeasureSpeed } = useSpeedTest();
     const [loading, setLoading] = useState(true);
-
     const user = useCurrentUser();
     const [selectedArrow, setSelectedArrow] = useState<'single' | 'multi'>('multi');
-    const [filteredServers, setFilteredServers] = useState<Server[]>([]); // Add this state
+    const [filteredServers, setFilteredServers] = useState<GeoLocationServer[]>([]);
 
     useEffect(() => {
         if (geolocationData) {
@@ -53,19 +57,22 @@ const SpeedTest: React.FC = () => {
         },
     ];
 
-    // Функция для сохранения данных о тесте
-    const saveTestResult = async () => {
+    // Memoizing saveTestResult to avoid unnecessary re-renders
+    const saveTestResult = useCallback(async () => {
         if (!user || !geolocationData || !geolocationData.servers.length) return;
 
         const currentServerInfo = geolocationData.servers.find(server => server.name === currentServer);
 
-        console.log("currentServerInfo ", currentServerInfo);
+        if (!currentServerInfo) {
+            console.log("Server not found");
+            return;
+        }
 
         const result = {
             timestamp: new Date().toISOString(),
             downloadSpeed: parseFloat(downloadSpeed),
             uploadSpeed: parseFloat(uploadSpeed),
-            ping: pingStats?.avg ?? null, // Обрабатываем случай с null значением
+            ping: pingStats?.avg ?? null,
             userLocation: `${geolocationData.city}, ${geolocationData.region}, ${geolocationData.country}`,
             isp: currentSponsor,
             userId: user.id,
@@ -82,13 +89,13 @@ const SpeedTest: React.FC = () => {
             },
             body: JSON.stringify(result),
         });
-    };
+    }, [user, geolocationData, currentServer, downloadSpeed, uploadSpeed, pingStats, currentSponsor]);
 
     useEffect(() => {
         if (!isTesting && downloadSpeed && uploadSpeed && pingStats?.avg !== null) {
-            saveTestResult();
+            saveTestResult().catch(console.error);
         }
-    }, [isTesting, downloadSpeed, uploadSpeed, pingStats]);
+    }, [isTesting, downloadSpeed, uploadSpeed, pingStats, saveTestResult]);
 
     return (
         <DashboardLayout>
@@ -98,7 +105,7 @@ const SpeedTest: React.FC = () => {
                         <SpeedTestControls
                             isTesting={isTesting}
                             onStartTest={() => generateAndMeasureSpeed()}
-                            hasAvailableServers={filteredServers.length > 0} // Pass this prop
+                            hasAvailableServers={filteredServers.length > 0}
                         />
                     </Center>
                 </Grid.Col>
@@ -120,9 +127,9 @@ const SpeedTest: React.FC = () => {
                                         currentServer="Loading..."
                                         currentSponsor="Loading..."
                                         geolocationData={null}
-                                        setCurrentServer={() => { }}
-                                        setCurrentSponsor={() => { }}
-                                        setFilteredServers={() => { }} // Add this prop
+                                        setCurrentServer={() => {}}
+                                        setCurrentSponsor={() => {}}
+                                        setFilteredServers={() => {}}
                                     />
                                     <ConnectionsService
                                         selectedArrow={selectedArrow}
@@ -144,7 +151,7 @@ const SpeedTest: React.FC = () => {
                                                 geolocationData={geolocationData}
                                                 setCurrentServer={setCurrentServer}
                                                 setCurrentSponsor={setCurrentSponsor}
-                                                setFilteredServers={setFilteredServers} // Add this prop
+                                                setFilteredServers={setFilteredServers}
                                             />
                                         </>
                                     )}
@@ -172,4 +179,3 @@ const SpeedTest: React.FC = () => {
 };
 
 export default SpeedTest;
-

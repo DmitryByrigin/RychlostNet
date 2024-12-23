@@ -1,28 +1,30 @@
 "use client";
 
-import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
-import {useSearchParams} from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import {Button, Group} from "@mantine/core";
-import {IconBrandGoogleFilled, IconBrandGithub} from "@tabler/icons-react";
+import { Button, Group } from "@mantine/core";
+import { IconBrandGoogleFilled, IconBrandGithub } from "@tabler/icons-react";
 
 export const Social = () => {
     const searchParams = useSearchParams();
-    const callbackUrl = searchParams.get("callbackUrl");
-
-    const onClick = (provider: "google" | "github") => {
-        signIn(provider, {
-            callbackUrl: callbackUrl || "/dashboard/speedtest",
-        });
-    }
+    const callbackUrl = searchParams.get("callbackUrl") || "/dashboard/speedtest";
+    const onClick = async (provider: "google" | "github") => {
+        try {
+            await signIn(provider, {
+                callbackUrl: callbackUrl,
+            });
+        } catch (error) {
+            console.error("Error during sign-in", error);
+        }
+    };
 
     return (
         <Group grow mb="md" mt="md">
             <Button radius="xl" onClick={() => onClick("google")}>
-                <IconBrandGoogleFilled/>
+                <IconBrandGoogleFilled />
             </Button>
             <Button radius="xl" onClick={() => onClick("github")}>
-                <IconBrandGithub/>
+                <IconBrandGithub />
             </Button>
         </Group>
     );

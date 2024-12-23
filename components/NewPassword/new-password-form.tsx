@@ -7,7 +7,7 @@ import {zodResolver} from '@hookform/resolvers/zod';
 import {NewPasswordSchema} from '@/schemas';
 import {newPassword} from '@/actions/new-password';
 import {Anchor, Button, Container, Group, Notification, Paper, PasswordInput, Text, TextInput} from '@mantine/core';
-import classes from "@/components/auth/NewVerification/NewVerification.module.css";
+import classes from "@/components/auth/newVerification/newVerification.module.scss";
 import Link from "next/link";
 import {useSearchParams} from "next/navigation";
 

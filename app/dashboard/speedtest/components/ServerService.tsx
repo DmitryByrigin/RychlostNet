@@ -1,9 +1,9 @@
-// ServerService.tsx
 import React, { useState, useEffect } from 'react';
 import { Anchor, Select, Text, UnstyledButton } from '@mantine/core';
 import { IconWorld } from '@tabler/icons-react';
 import CustomModal from '@/components/modal/Modal';
 import classes from '../SpeedTest.module.css';
+import { GeolocationData } from '../types/geolocation';
 
 interface Server {
     name: string;
@@ -11,8 +11,10 @@ interface Server {
     url: string;
 }
 
-interface GeolocationData {
-    servers: Server[];
+interface GeoLocationServer {
+    name: string;
+    location: { city: string; region: string; country: string };
+    sponsor: string | string[];  // Спонсор добавлен в GeoLocationServer
 }
 
 interface ServerServiceProps {
@@ -21,27 +23,38 @@ interface ServerServiceProps {
     geolocationData: GeolocationData | null;
     setCurrentServer: (server: string) => void;
     setCurrentSponsor: (sponsor: string) => void;
-    setFilteredServers: (servers: Server[]) => void; // Add this prop
+    setFilteredServers: (servers: GeoLocationServer[]) => void;
 }
 
 const ServerService: React.FC<ServerServiceProps> = ({
-    currentServer,
-    currentSponsor,
-    geolocationData,
-    setCurrentServer,
-    setCurrentSponsor,
-    setFilteredServers // Add this prop
-}) => {
+                                                         currentServer,
+                                                         currentSponsor,
+                                                         geolocationData,
+                                                         setCurrentServer,
+                                                         setCurrentSponsor,
+                                                         setFilteredServers,
+                                                     }) => {
     const [openModal, setOpenModal] = useState(false);
-    const [localFilteredServers, setLocalFilteredServers] = useState<Server[]>([]);
+    const [localFilteredServers, setLocalFilteredServers] = useState<GeoLocationServer[]>([]);
 
     useEffect(() => {
         const checkServerAvailability = async (server: Server) => {
             try {
-                const response = await fetch(`${server.url}/speedtest/server-info`, { method: 'HEAD', timeout: 5000 });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // Таймаут 5 секунд
+
+                const response = await fetch(`${server.url}/speedtest/server-info`, {
+                    method: 'HEAD',
+                    signal: controller.signal,
+                });
+
+                clearTimeout(timeoutId);
+
                 return response.ok;
-            } catch (error) {
-                console.log(`Error checking server ${server.url}: ${error.message}`);
+            } catch (error: unknown) {
+                if (error instanceof Error) {
+                    console.log(`Error checking server ${server.url}: ${error.message}`);
+                }
                 return false;
             }
         };
@@ -54,19 +67,26 @@ const ServerService: React.FC<ServerServiceProps> = ({
                         return isAvailable ? server : null;
                     })
                 );
-                const filtered = availableServers.filter((server) => server !== null) as Server[];
-                setLocalFilteredServers(filtered);
-                setFilteredServers(filtered); // Update parent state
+
+                // Убираем серверы, которые недоступны
+                const filteredServers = availableServers.filter((server) => server !== null) as Server[];
+
+                // Маппируем Server в GeoLocationServer, добавляем location и sponsor
+                const geoLocationServers: GeoLocationServer[] = filteredServers.map((server) => ({
+                    name: server.name,
+                    location: { city: '', region: '', country: '' }, // Используйте данные из geolocationData, если они есть
+                    sponsor: server.sponsor,
+                }));
+
+                setLocalFilteredServers(geoLocationServers);
+                setFilteredServers(geoLocationServers); // Обновляем родительский стейт
             }
         };
 
         filterServers();
     }, [geolocationData, setFilteredServers]);
 
-    const serverDisplayName = (server: Server) => {
-        if (Array.isArray(server.sponsor)) {
-            return server.sponsor.map((s: string) => `${server.name} - ${s}`).join(', ');
-        }
+    const serverDisplayName = (server: GeoLocationServer) => {
         return `${server.name} - ${server.sponsor}`;
     };
 
@@ -95,32 +115,20 @@ const ServerService: React.FC<ServerServiceProps> = ({
                     <CustomModal isOpen={openModal} onClose={() => setOpenModal(false)}>
                         <Select
                             label="Servers close to you:"
-                            placeholder={serverDisplayName({ name: currentServer, sponsor: currentSponsor })}
-                            value={serverDisplayName({ name: currentServer, sponsor: currentSponsor })}
-                            data={localFilteredServers.flatMap((server: Server) => {
-                                if (Array.isArray(server.sponsor)) {
-                                    return server.sponsor.map((s: string) => ({
-                                        value: `${server.name} - ${s}`,
-                                        label: `${server.name} - ${s}`
-                                    }));
-                                }
-                                return {
-                                    value: `${server.name} - ${server.sponsor}`,
-                                    label: `${server.name} - ${server.sponsor}`
-                                };
-                            })}
+                            placeholder={serverDisplayName({ name: currentServer, location: { city: '', region: '', country: '' }, sponsor: currentSponsor })}
+                            value={serverDisplayName({ name: currentServer, location: { city: '', region: '', country: '' }, sponsor: currentSponsor })}
+                            data={localFilteredServers.map((server) => ({
+                                value: serverDisplayName(server),
+                                label: serverDisplayName(server),
+                            }))}
                             searchable
                             className={classes.selectMargin}
                             onChange={(value: string | null) => {
                                 if (value) {
-                                    const selectedServer = localFilteredServers.find((server: Server) => {
-                                        const fullName = `${server.name} - ${server.sponsor}`;
-                                        return fullName === value;
-                                    });
+                                    const selectedServer = localFilteredServers.find((server) => serverDisplayName(server) === value);
                                     if (selectedServer) {
-                                        const [, selectedSponsor] = value.split(' - ');
                                         setCurrentServer(selectedServer.name);
-                                        setCurrentSponsor(selectedSponsor);
+                                        setCurrentSponsor(Array.isArray(selectedServer.sponsor) ? selectedServer.sponsor.join(', ') : selectedServer.sponsor);
                                     }
                                 }
                                 setOpenModal(false);

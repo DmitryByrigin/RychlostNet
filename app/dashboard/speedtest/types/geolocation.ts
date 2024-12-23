@@ -1,4 +1,9 @@
 export interface Server {
+    location: {
+        city: string;
+        region: string;
+        country: string;
+    };
     url: string;
     name: string;
     country: string;

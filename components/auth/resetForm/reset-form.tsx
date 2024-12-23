@@ -38,13 +38,13 @@ export const ResetForm = () => {
         });
     };
 
-    function DisplayNotification({ message, color }: NotificationProps) {
+    function DisplayNotification({message, color}: NotificationProps) {
         return message && <Notification withCloseButton={false} color={color}>{message}</Notification>;
     }
 
     const notifications = [
-        { message: error, color: "red" },
-        { message: success, color: "green" },
+        {message: error, color: "red"},
+        {message: success, color: "green"},
     ];
 
     return (
@@ -68,7 +68,7 @@ export const ResetForm = () => {
                     />
 
                     {notifications.map((notification, index) =>
-                        <DisplayNotification key={index} message={notification.message} color={notification.color} />
+                        <DisplayNotification key={index} message={notification.message} color={notification.color}/>
                     )}
 
                     <Group justify="space-between" mt="lg">

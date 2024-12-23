@@ -1,4 +1,4 @@
-import {ResetForm} from "@/components/auth/ResetForm/reset-form";
+import {ResetForm} from "@/components/auth/resetForm/reset-form";
 import {Center} from "@mantine/core";
 
 const ResetPage = () => {

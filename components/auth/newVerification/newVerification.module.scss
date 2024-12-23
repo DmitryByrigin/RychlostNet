@@ -1,0 +1,57 @@
+$spacing-xl: calc(var(--mantine-spacing-xl) * 4);
+$font-primary: 'Greycliff CF', var(--mantine-font-family);
+$color-light: var(--mantine-color-black);
+$color-dark: var(--mantine-color-white);
+$color-highlight: var(--mantine-color-blue-light);
+$radius-sm: var(--mantine-radius-sm);
+$breakpoint-md: 768px;
+$breakpoint-xs: 480px;
+
+.inner {
+    display: flex;
+    justify-content: center;
+    padding: $spacing-xl 0;
+}
+
+.content {
+    max-width: 480px;
+
+    @media (max-width: $breakpoint-md) {
+        max-width: 100%;
+        margin-right: 0;
+    }
+}
+
+.title {
+    color: light-dark($color-light, $color-dark);
+    font-family: $font-primary;
+    font-size: 34px;
+    line-height: 1.2;
+    font-weight: 500;
+
+    @media (max-width: $breakpoint-xs) {
+        font-size: 28px;
+    }
+}
+
+.control {
+    @media (max-width: $breakpoint-xs) {
+        flex: 1;
+    }
+}
+
+.image {
+    width: 376px;
+    height: 356px;
+
+    @media (max-width: $breakpoint-md) {
+        display: none;
+    }
+}
+
+.highlight {
+    position: relative;
+    background-color: $color-highlight;
+    border-radius: $radius-sm;
+    padding: 4px 12px;
+}

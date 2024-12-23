@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserAccount } from "@/components/dashboard/User/UserAccount";
+import { UserAccount } from "@/components/auth/user/userAccount";
 import DashboardLayout from '../DashboardLayout'
 
 const UserPage = () => {

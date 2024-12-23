@@ -17,11 +17,12 @@ import {
 import {useDisclosure, useMediaQuery} from '@mantine/hooks';
 import {IconBook, IconChartPie3, IconCode, IconCoin, IconFingerprint, IconNotification,} from '@tabler/icons-react';
 import classes from './DashboardHeader.module.css';
-import {UserButton} from "@/components/auth/UserButton/user-button";
+import {UserButton} from "@/components/auth/userButton/user-button";
 import Link from "next/link";
 import {usePathname} from "next/navigation";
 import {useCurrentUser} from "@/hooks/use-current-user";
 import {useEffect, useState} from "react";
+import Image from 'next/image';
 
 
 const mockdata = [
@@ -113,7 +114,7 @@ export function DashboardHeader() {
                 <Container className={classes.logoSection} size="md" >
                     <Link href="/dashboard/speedtest">
                         <div>
-                            <img src={"/images/logo.png"} alt="Logo" width={35} />
+                            <Image src="/images/logo.png" alt="Logo" width={40} height={35} />
                         </div>
                     </Link>
 

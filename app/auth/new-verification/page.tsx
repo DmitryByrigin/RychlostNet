@@ -1,4 +1,4 @@
-import { NewVerificationForm } from '@/components/auth/NewVerification/new-verification-form';
+import { NewVerificationForm } from '@/components/auth/newVerification/new-verification-form';
 import {Center} from "@mantine/core";
 
 const NewVerificationPage = () => {

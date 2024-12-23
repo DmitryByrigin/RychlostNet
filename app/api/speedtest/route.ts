@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { auth } from '@/auth'; // Import authorization
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 
 const prisma = new PrismaClient();
-
 
 export async function POST(req: NextRequest) {
     try {
@@ -13,18 +12,16 @@ export async function POST(req: NextRequest) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
-        // Данные от клиента
         const {
             downloadSpeed,
             uploadSpeed,
             ping,
-            userLocation, // Местоположение пользователя
-            serverLocation, // Местоположение сервера
-            serverName,     // Имя сервера
+            userLocation,
+            serverLocation,
+            serverName,
             isp,
         } = await req.json();
 
-        // Проверка обязательных данных
         if (!serverLocation || !serverName) {
             return new NextResponse(
                 JSON.stringify({ error: 'Server data is incomplete' }),
@@ -32,14 +29,13 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Сохраняем в БД данные с правильным форматом
         const result = await prisma.speedTestHistory.create({
             data: {
                 downloadSpeed,
                 uploadSpeed,
                 ping,
-                userLocation, // Местоположение пользователя
-                serverLocation, // Местоположение сервера
+                userLocation,
+                serverLocation,
                 serverName,
                 isp,
                 userId: session.user.id,
@@ -53,8 +49,7 @@ export async function POST(req: NextRequest) {
     }
 }
 
-
-export async function DELETE(req: NextRequest) {
+export async function DELETE() {
     try {
         console.log('Deleting all records');
         const result = await db.speedTestHistory.deleteMany({});
@@ -65,8 +60,7 @@ export async function DELETE(req: NextRequest) {
     }
 }
 
-
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         const session = await auth();
         if (!session) {

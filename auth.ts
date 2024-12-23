@@ -34,7 +34,7 @@ export const {
             if (account?.provider !== "credentials") return true;
 
             if (!user?.id) {
-                throw new Error("User ID is undefined");
+                throw new Error("user ID is undefined");
             }
 
             const existingUser = await getUserById(user.id);
