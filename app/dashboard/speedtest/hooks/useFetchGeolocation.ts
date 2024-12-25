@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GeolocationData } from '../types/geolocation'; // Тип данных для геолокации
+import { GeolocationData } from '../types/geolocation';
 
 export const useFetchGeolocation = () => {
     const [geolocationData, setGeolocationData] = useState<GeolocationData | null>(null);
@@ -14,7 +14,6 @@ export const useFetchGeolocation = () => {
             }
             const data: GeolocationData = await response.json();
 
-            // Преобразуем список серверов в массив и сортируем по расстоянию
             const serversArray = Array.isArray(data.servers) ? data.servers : [data.servers];
             const sortedServers = serversArray.sort((a, b) => a.distance - b.distance);
 
@@ -23,7 +22,6 @@ export const useFetchGeolocation = () => {
                 servers: sortedServers,
             });
 
-            // Устанавливаем сервер с наименьшим расстоянием
             setCurrentServer(sortedServers[0].name);
             setCurrentSponsor(sortedServers[0].sponsor as string);
         } catch (error) {
