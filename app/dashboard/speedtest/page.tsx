@@ -119,9 +119,9 @@ const SpeedTest: React.FC = () => {
                             {loading ? (
                                 <>
                                     <OperatorService
-                                        ip="Loading..."
+                                        ip=""
                                         org="Loading..."
-                                        location="Loading..."
+                                        location=""
                                     />
                                     <ServerService
                                         currentServer="Loading..."
