@@ -23,7 +23,14 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const fetchGeolocationData = async (): Promise<void> => {
         try {
-            const response = await fetch('/api/getgeolocation');
+            const response = await fetch('/api/getgeolocation', {
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }

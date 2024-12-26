@@ -8,19 +8,29 @@ export async function GET(req: NextRequest) {
     try {
         // Запрашиваем данные геолокации через ipdata.co
         const geoResponse = await fetch(
-            `https://api.ipdata.co/?api-key=63c4dfaccc7a5385fa75956c7d58ae869791a2a2a204c7f21f5034f8`
+            `https://api.ipdata.co/?api-key=63c4dfaccc7a5385fa75956c7d58ae869791a2a2a204c7f21f5034f8`,
+            {
+                cache: 'no-store', // Отключаем кэширование для запроса геолокации
+            }
         );
         const geoData = await geoResponse.json();
         if (!geoResponse.ok || !geoData.city || !geoData.region || !geoData.country_name) {
             console.warn('Primary geolocation service failed or returned incomplete data, trying alternative service.');
-            const alternativeGeoResponse = await fetch('https://ipapi.co/json');
+            const alternativeGeoResponse = await fetch('https://ipapi.co/json', {
+                cache: 'no-store', // Отключаем кэширование для альтернативного запроса
+            });
             if (!alternativeGeoResponse.ok) {
                 throw new Error(`Failed to fetch alternative geolocation: ${alternativeGeoResponse.statusText}`);
             }
             const alternativeGeoData = await alternativeGeoResponse.json();
             return new NextResponse(JSON.stringify(alternativeGeoData), {
                 status: 200,
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                },
             });
         }
 
@@ -39,6 +49,12 @@ export async function GET(req: NextRequest) {
                 try {
                     const response = await fetch(`${serverUrl}/speedtest/server-info`, {
                         signal: controller.signal,
+                        cache: 'no-store', // Отключаем кэширование для запросов к серверам
+                        headers: {
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache',
+                            'Expires': '0'
+                        }
                     });
                     clearTimeout(timeoutId);
 
@@ -83,17 +99,22 @@ export async function GET(req: NextRequest) {
         return new NextResponse(JSON.stringify(responseData), {
             status: 200,
             headers: {
-                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
                 'Pragma': 'no-cache',
                 'Expires': '0',
-                'Content-Type': 'application/json',
             },
         });
     } catch (error) {
         console.error('Error in geolocation API:', error);
         return new NextResponse(JSON.stringify({ error: 'Failed to fetch geolocation data' }), {
             status: 500,
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            },
         });
     }
 }

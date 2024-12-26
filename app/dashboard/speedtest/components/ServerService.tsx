@@ -36,7 +36,7 @@ const ServerService: React.FC<ServerServiceProps> = ({
 
     const handleServerChange = (value: string | null) => {
         console.log('handleServerChange called with value:', value);
-        
+
         if (!value || !localFilteredServers.length) {
             console.log('No value or no servers available');
             return;
@@ -44,9 +44,9 @@ const ServerService: React.FC<ServerServiceProps> = ({
 
         // Находим сервер по полному значению (имя + спонсор)
         const selectedServer = localFilteredServers.find(server => serverDisplayName(server) === value);
-        
+
         console.log('Found server:', selectedServer);
-        
+
         if (selectedServer) {
             console.log('Setting current server:', selectedServer.name);
             setCurrentServer(selectedServer.name);
@@ -91,7 +91,11 @@ const ServerService: React.FC<ServerServiceProps> = ({
                     </>
                 )}
                 {geolocationData && localFilteredServers.length > 0 && (
-                    <CustomModal isOpen={openModal} onClose={() => setOpenModal(false)}>
+                    <CustomModal 
+                        isOpen={openModal} 
+                        onClose={() => setOpenModal(false)}
+                        title="Select Test Server"
+                    >
                         <Select
                             label="Servers close to you:"
                             placeholder="Choose a server"
@@ -106,12 +110,12 @@ const ServerService: React.FC<ServerServiceProps> = ({
                                 <Text size="sm" mt="md">
                                     Location: {selectedServer.location.city}, {selectedServer.location.region}, {selectedServer.location.country}
                                 </Text>
-                                <Text size="sm">
-                                    Distance: {selectedServer.distance.toFixed(2)} km
-                                </Text>
-                                <Text size="sm">
-                                    Host: {selectedServer.host}
-                                </Text>
+                                {/*<Text size="sm">*/}
+                                {/*    Distance: {selectedServer.distance.toFixed(2)} km*/}
+                                {/*</Text>*/}
+                                {/*<Text size="sm">*/}
+                                {/*    Host: {selectedServer.host}*/}
+                                {/*</Text>*/}
                             </>
                         )}
                     </CustomModal>
