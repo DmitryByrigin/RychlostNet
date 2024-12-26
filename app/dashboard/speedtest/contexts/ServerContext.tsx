@@ -1,10 +1,25 @@
-import { useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { GeolocationData, Server } from '../types/geolocation';
 
-export const useFetchGeolocation = () => {
+interface ServerContextType {
+    geolocationData: GeolocationData | null;
+    selectedServer: Server | null;
+    setCurrentServer: (serverName: string) => void;
+}
+
+const ServerContext = createContext<ServerContextType | null>(null);
+
+export const useServer = () => {
+    const context = useContext(ServerContext);
+    if (!context) {
+        throw new Error('useServer must be used within a ServerProvider');
+    }
+    return context;
+};
+
+export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [geolocationData, setGeolocationData] = useState<GeolocationData | null>(null);
     const [selectedServer, setSelectedServer] = useState<Server | null>(null);
-    const [currentSponsor, setCurrentSponsor] = useState<string>('');
 
     const fetchGeolocationData = async (): Promise<void> => {
         try {
@@ -38,7 +53,6 @@ export const useFetchGeolocation = () => {
                 if (initialServer) {
                     console.log('Setting initial server:', initialServer);
                     setSelectedServer(initialServer);
-                    setCurrentSponsor(Array.isArray(initialServer.sponsor) ? initialServer.sponsor.join(', ') : initialServer.sponsor);
                 }
             }
         } catch (error) {
@@ -82,13 +96,9 @@ export const useFetchGeolocation = () => {
         }
     };
 
-    return {
-        geolocationData,
-        currentServer: selectedServer?.name || '',
-        currentServerUrl: selectedServer?.url || '',
-        currentSponsor,
-        selectedServer,
-        setCurrentServer,
-        setCurrentSponsor,
-    };
+    return (
+        <ServerContext.Provider value={{ geolocationData, selectedServer, setCurrentServer }}>
+            {children}
+        </ServerContext.Provider>
+    );
 };

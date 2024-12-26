@@ -1,20 +1,41 @@
-import { useState } from 'react';
-import { useFetchGeolocation } from './useFetchGeolocation';
+import { useState, useEffect } from 'react';
+import { useServer } from '../contexts/ServerContext';
 
 export const useSpeedTest = () => {
     const [uploadSpeed, setUploadSpeed] = useState('');
     const [downloadSpeed, setDownloadSpeed] = useState('');
     const [pingStats, setPingStats] = useState({ min: 0, max: 0, avg: 0 });
     const [isTesting, setIsTesting] = useState(false);
-    const { geolocationData } = useFetchGeolocation();
+    const { selectedServer } = useServer();
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    useEffect(() => {
+        if (selectedServer) {
+            console.log('Speed test server updated:', {
+                name: selectedServer.name,
+                url: selectedServer.url,
+                sponsor: selectedServer.sponsor
+            });
+        }
+    }, [selectedServer]);
 
     const generateAndMeasureSpeed = async () => {
         setIsTesting(true);
 
         try {
+            if (!selectedServer) {
+                throw new Error('No server selected');
+            }
+
+            console.log('Using server for speed test:', {
+                name: selectedServer.name,
+                url: selectedServer.url,
+                sponsor: selectedServer.sponsor
+            });
+
             // Generate file for upload
             const file = new Blob(['0'.repeat(5 * 1024 * 1024)]);
-            const uploadResponse = await fetch('http://localhost:3000/api/generateImage', {
+            const uploadResponse = await fetch(`${appUrl}/api/generateImage`, {
                 method: 'POST',
                 body: file,
             });
@@ -35,7 +56,7 @@ export const useSpeedTest = () => {
             // Fix paths and upload images
             for (const path of imagePaths) {
                 const normalizedPath = path.replace(/\\/g, '/').replace('/public', '');
-                const fullUrl = `http://localhost:3000${normalizedPath}`;
+                const fullUrl = `${appUrl}${normalizedPath}`;
 
                 const response = await fetch(fullUrl);
                 if (!response.ok) {
@@ -47,8 +68,12 @@ export const useSpeedTest = () => {
                 formData.append('files', blob, fileName);
             }
 
-            console.log('Sending images to /speedtest/test');
-            const nestResponse = await fetch('http://localhost:3001/speedtest/test', {
+            // Use the server's own reported URL for speed test
+            const baseUrl = selectedServer.url.replace('/speedtest/test', '');
+            const speedTestUrl = `${baseUrl}/speedtest/test`;
+
+            console.log('Sending images to speedtest/test on server:', speedTestUrl);
+            const nestResponse = await fetch(speedTestUrl, {
                 method: 'POST',
                 body: formData,
             });

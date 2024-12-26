@@ -13,19 +13,21 @@ import classes from './SpeedTest.module.css';
 import { IconArrowsDiff, IconDownload, IconUpload } from "@tabler/icons-react";
 import DashboardLayout from "@/app/dashboard/DashboardLayout";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { ServerProvider, useServer } from './contexts/ServerContext';
+import { Server } from './types/geolocation';
 
 interface GeoLocationServer {
     name: string;
     location: { city: string; region: string; country: string };
 }
 
-const SpeedTest: React.FC = () => {
-    const { geolocationData, currentServer, setCurrentServer, currentSponsor, setCurrentSponsor } = useFetchGeolocation();
+const SpeedTestContent: React.FC = () => {
+    const { geolocationData, selectedServer } = useServer();
     const { uploadSpeed, downloadSpeed, pingStats, isTesting, generateAndMeasureSpeed } = useSpeedTest();
     const [loading, setLoading] = useState(true);
     const user = useCurrentUser();
     const [selectedArrow, setSelectedArrow] = useState<'single' | 'multi'>('multi');
-    const [filteredServers, setFilteredServers] = useState<GeoLocationServer[]>([]);
+    const [filteredServers, setFilteredServers] = useState<Server[]>([]);
 
     useEffect(() => {
         if (geolocationData) {
@@ -34,8 +36,8 @@ const SpeedTest: React.FC = () => {
     }, [geolocationData]);
 
     useEffect(() => {
-        console.log('Current server:', currentServer);
-    }, [currentServer]);
+        console.log('Selected server:', selectedServer);
+    }, [selectedServer]);
 
     const networkStats = [
         {
@@ -57,16 +59,8 @@ const SpeedTest: React.FC = () => {
         },
     ];
 
-    // Memoizing saveTestResult to avoid unnecessary re-renders
     const saveTestResult = useCallback(async () => {
-        if (!user || !geolocationData || !geolocationData.servers.length) return;
-
-        const currentServerInfo = geolocationData.servers.find(server => server.name === currentServer);
-
-        if (!currentServerInfo) {
-            console.log("Server not found");
-            return;
-        }
+        if (!user || !geolocationData || !selectedServer) return;
 
         const result = {
             timestamp: new Date().toISOString(),
@@ -74,10 +68,10 @@ const SpeedTest: React.FC = () => {
             uploadSpeed: parseFloat(uploadSpeed),
             ping: pingStats?.avg ?? null,
             userLocation: `${geolocationData.city}, ${geolocationData.region}, ${geolocationData.country}`,
-            isp: currentSponsor,
+            isp: geolocationData.org,
             userId: user.id,
-            serverName: currentServerInfo.name,
-            serverLocation: `${currentServerInfo.location.city}, ${currentServerInfo.location.region}, ${currentServerInfo.location.country}`,
+            serverName: selectedServer.name,
+            serverLocation: `${selectedServer.location.city}, ${selectedServer.location.region}, ${selectedServer.location.country}`,
         };
 
         console.log('Test result to be saved:', result);
@@ -89,7 +83,7 @@ const SpeedTest: React.FC = () => {
             },
             body: JSON.stringify(result),
         });
-    }, [user, geolocationData, currentServer, downloadSpeed, uploadSpeed, pingStats, currentSponsor]);
+    }, [user, geolocationData, selectedServer, downloadSpeed, uploadSpeed, pingStats]);
 
     useEffect(() => {
         if (!isTesting && downloadSpeed && uploadSpeed && pingStats?.avg !== null) {
@@ -98,82 +92,80 @@ const SpeedTest: React.FC = () => {
     }, [isTesting, downloadSpeed, uploadSpeed, pingStats, saveTestResult]);
 
     return (
+        <Grid gutter="md">
+            <Grid.Col span={{ base: 12, md: 6 }}>
+                <Center>
+                    <SpeedTestControls
+                        isTesting={isTesting}
+                        onStartTest={() => generateAndMeasureSpeed()}
+                        hasAvailableServers={filteredServers.length > 0}
+                    />
+                </Center>
+            </Grid.Col>
+
+            <Grid.Col span={{ base: 12, md: 6 }}>
+                <Card withBorder radius="md" className={classes.card}>
+                    <Group justify="space-between">
+                        <Text className={classes.title}>Services</Text>
+                    </Group>
+                    <SimpleGrid cols={1} mt="md">
+                        {loading ? (
+                            <>
+                                <OperatorService
+                                    ip=""
+                                    org="Loading..."
+                                    location=""
+                                />
+                                <ServerService
+                                    setFilteredServers={setFilteredServers}
+                                />
+                                <ConnectionsService
+                                    selectedArrow={selectedArrow}
+                                    setSelectedArrow={setSelectedArrow}
+                                />
+                            </>
+                        ) : (
+                            <>
+                                {geolocationData && (
+                                    <>
+                                        <OperatorService
+                                            ip={geolocationData.ip}
+                                            org={geolocationData.org}
+                                            location={`${geolocationData.city}, ${geolocationData.region}, ${geolocationData.country}`}
+                                        />
+                                        <ServerService
+                                            setFilteredServers={setFilteredServers}
+                                        />
+                                    </>
+                                )}
+                                <ConnectionsService
+                                    selectedArrow={selectedArrow}
+                                    setSelectedArrow={setSelectedArrow}
+                                />
+                            </>
+                        )}
+                    </SimpleGrid>
+                </Card>
+            </Grid.Col>
+
+            <Grid.Col span={12}>
+                <Card withBorder radius="md" className={classes.card}>
+                    <Group justify="space-between">
+                        <Text className={classes.title}>Result</Text>
+                    </Group>
+                    <SpeedTestResult networkStats={networkStats} />
+                </Card>
+            </Grid.Col>
+        </Grid>
+    );
+};
+
+const SpeedTest: React.FC = () => {
+    return (
         <DashboardLayout>
-            <Grid gutter="md">
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                    <Center>
-                        <SpeedTestControls
-                            isTesting={isTesting}
-                            onStartTest={() => generateAndMeasureSpeed()}
-                            hasAvailableServers={filteredServers.length > 0}
-                        />
-                    </Center>
-                </Grid.Col>
-
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                    <Card withBorder radius="md" className={classes.card}>
-                        <Group justify="space-between">
-                            <Text className={classes.title}>Services</Text>
-                        </Group>
-                        <SimpleGrid cols={1} mt="md">
-                            {loading ? (
-                                <>
-                                    <OperatorService
-                                        ip=""
-                                        org="Loading..."
-                                        location=""
-                                    />
-                                    <ServerService
-                                        currentServer="Loading..."
-                                        currentSponsor="Loading..."
-                                        geolocationData={null}
-                                        setCurrentServer={() => {}}
-                                        setCurrentSponsor={() => {}}
-                                        setFilteredServers={() => {}}
-                                    />
-                                    <ConnectionsService
-                                        selectedArrow={selectedArrow}
-                                        setSelectedArrow={setSelectedArrow}
-                                    />
-                                </>
-                            ) : (
-                                <>
-                                    {geolocationData && (
-                                        <>
-                                            <OperatorService
-                                                ip={geolocationData.ip}
-                                                org={geolocationData.org}
-                                                location={`${geolocationData.city}, ${geolocationData.region}, ${geolocationData.country}`}
-                                            />
-                                            <ServerService
-                                                currentServer={currentServer}
-                                                currentSponsor={currentSponsor}
-                                                geolocationData={geolocationData}
-                                                setCurrentServer={setCurrentServer}
-                                                setCurrentSponsor={setCurrentSponsor}
-                                                setFilteredServers={setFilteredServers}
-                                            />
-                                        </>
-                                    )}
-                                    <ConnectionsService
-                                        selectedArrow={selectedArrow}
-                                        setSelectedArrow={setSelectedArrow}
-                                    />
-                                </>
-                            )}
-                        </SimpleGrid>
-                    </Card>
-                </Grid.Col>
-
-                <Grid.Col span={12}>
-                    <Card withBorder radius="md" className={classes.card}>
-                        <Group justify="space-between">
-                            <Text className={classes.title}>Result</Text>
-                        </Group>
-                        <SpeedTestResult networkStats={networkStats} />
-                    </Card>
-                </Grid.Col>
-            </Grid>
+            <ServerProvider>
+                <SpeedTestContent />
+            </ServerProvider>
         </DashboardLayout>
     );
 };

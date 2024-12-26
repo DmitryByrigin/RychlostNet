@@ -28,59 +28,47 @@ export async function GET(req: NextRequest) {
         console.log(`Request from IP address: ${geoData.ip}`);
 
         const serverUrls = process.env.NEXT_PUBLIC_API_SERVERS?.split(',') || [];
-        if (serverUrls.length === 0) {
-            return new NextResponse(JSON.stringify({ error: 'No servers available' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-
         const errorLogs = new Set<string>();
 
-        const serverRequests = serverUrls.map(async (serverUrl) => {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // Таймаут 5 секунд
+        let availableServers = [];
+        if (serverUrls.length > 0) {
+            const serverRequests = serverUrls.map(async (serverUrl) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // Таймаут 5 секунд
 
-            try {
-                const response = await fetch(`${serverUrl}/speedtest/server-info`, {
-                    signal: controller.signal,
-                });
-                clearTimeout(timeoutId);
+                try {
+                    const response = await fetch(`${serverUrl}/speedtest/server-info`, {
+                        signal: controller.signal,
+                    });
+                    clearTimeout(timeoutId);
 
-                if (response.ok) {
-                    const data = await response.json();
-                    return { ...data, url: serverUrl };
-                } else {
-                    errorLogs.add(`Server ${serverUrl} responded with status ${response.status}`);
-                }
-            } catch (error: unknown) {
-                if (error instanceof Error) {
-                    if (error.name === 'AbortError') {
-                        errorLogs.add(`Server ${serverUrl} timed out`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        return { ...data, url: serverUrl };
                     } else {
-                        errorLogs.add(`Error fetching server info from ${serverUrl}: ${error.message}`);
+                        errorLogs.add(`Server ${serverUrl} responded with status ${response.status}`);
                     }
-                } else {
-                    errorLogs.add(`Unknown error fetching server info from ${serverUrl}`);
+                } catch (error: unknown) {
+                    if (error instanceof Error) {
+                        if (error.name === 'AbortError') {
+                            errorLogs.add(`Server ${serverUrl} timed out`);
+                        } else {
+                            errorLogs.add(`Error fetching server info from ${serverUrl}: ${error.message}`);
+                        }
+                    } else {
+                        errorLogs.add(`Unknown error fetching server info from ${serverUrl}`);
+                    }
                 }
-            }
 
-            return null;
-        });
-
-        const serverResponses = await Promise.all(serverRequests);
-
-        if (errorLogs.size > 0) {
-            console.error("Server Errors:", Array.from(errorLogs));
-        }
-
-        const availableServers = serverResponses.filter((server) => server !== null);
-
-        if (availableServers.length === 0) {
-            return new NextResponse(JSON.stringify({ error: 'No available servers' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
+                return null;
             });
+
+            const serverResponses = await Promise.all(serverRequests);
+            availableServers = serverResponses.filter((server) => server !== null);
+
+            if (errorLogs.size > 0) {
+                console.error("Server Errors:", Array.from(errorLogs));
+            }
         }
 
         const responseData = {
@@ -98,21 +86,14 @@ export async function GET(req: NextRequest) {
                 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
                 'Pragma': 'no-cache',
                 'Expires': '0',
+                'Content-Type': 'application/json',
             },
         });
-    } catch (error: unknown) {
-        if (error instanceof Error) {
-            console.error('Error processing request:', error.message);
-            return new NextResponse(JSON.stringify({ error: 'Failed to fetch data' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        } else {
-            console.error('Unknown error:', error);
-            return new NextResponse(JSON.stringify({ error: 'Unknown error occurred' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
+    } catch (error) {
+        console.error('Error in geolocation API:', error);
+        return new NextResponse(JSON.stringify({ error: 'Failed to fetch geolocation data' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
 }
