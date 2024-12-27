@@ -37,14 +37,21 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const data: GeolocationData = await response.json();
             console.log('Fetched geolocation data:', data);
 
-            const serversArray = Array.isArray(data.servers) ? data.servers : [data.servers];
-            const sortedServers = serversArray.sort((a, b) => a.distance - b.distance);
+            // Initialize empty servers array if not present
+            if (!data.servers) {
+                data.servers = [];
+            }
 
-            // Убедимся, что у каждого сервера есть правильный URL для тестирования
-            const processedServers = sortedServers.map(server => ({
-                ...server,
-                url: server.url.includes('/speedtest/test') ? server.url : `${server.url}/speedtest/test`
-            }));
+            const serversArray = Array.isArray(data.servers) ? data.servers : [data.servers];
+            const sortedServers = serversArray.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
+            // Only process servers if they exist
+            const processedServers = sortedServers.length > 0 
+                ? sortedServers.map(server => ({
+                    ...server,
+                    url: server.url?.includes('/speedtest/test') ? server.url : server.url ? `${server.url}/speedtest/test` : ''
+                }))
+                : [];
 
             const newData = {
                 ...data,
@@ -54,8 +61,8 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setGeolocationData(newData);
             console.log('Updated geolocation data:', newData);
 
-            // Set initial server only if no server is currently selected
-            if (!selectedServer) {
+            // Set initial server only if we have servers and no server is currently selected
+            if (!selectedServer && processedServers.length > 0) {
                 const initialServer = processedServers[0];
                 if (initialServer) {
                     console.log('Setting initial server:', initialServer);
