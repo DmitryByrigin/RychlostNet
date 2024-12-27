@@ -1,4 +1,8 @@
 .sortableHeader {
     cursor: pointer;
-    /*display: contents;*/
+    user-select: none;
+}
+
+.sortableHeader:hover {
+    background-color: var(--mantine-color-gray-0);
 }
