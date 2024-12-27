@@ -23,7 +23,68 @@ export async function GET(req: NextRequest) {
                 throw new Error(`Failed to fetch alternative geolocation: ${alternativeGeoResponse.statusText}`);
             }
             const alternativeGeoData = await alternativeGeoResponse.json();
-            return new NextResponse(JSON.stringify(alternativeGeoData), {
+
+            // Получаем список серверов
+            const serverUrls = process.env.NEXT_PUBLIC_API_SERVERS?.split(',') || [];
+            const errorLogs = new Set<string>();
+            let availableServers = [];
+
+            if (serverUrls.length > 0) {
+                const serverRequests = serverUrls.map(async (serverUrl) => {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                    try {
+                        const response = await fetch(`${serverUrl}/speedtest/server-info`, {
+                            signal: controller.signal,
+                            cache: 'no-store',
+                            headers: {
+                                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                'Pragma': 'no-cache',
+                                'Expires': '0'
+                            }
+                        });
+                        clearTimeout(timeoutId);
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            return { ...data, url: serverUrl };
+                        } else {
+                            errorLogs.add(`Server ${serverUrl} responded with status ${response.status}`);
+                        }
+                    } catch (error: unknown) {
+                        if (error instanceof Error) {
+                            if (error.name === 'AbortError') {
+                                errorLogs.add(`Server ${serverUrl} timed out`);
+                            } else {
+                                errorLogs.add(`Error fetching server info from ${serverUrl}: ${error.message}`);
+                            }
+                        } else {
+                            errorLogs.add(`Unknown error fetching server info from ${serverUrl}`);
+                        }
+                    }
+                    return null;
+                });
+
+                const serverResponses = await Promise.all(serverRequests);
+                availableServers = serverResponses.filter((server) => server !== null);
+
+                if (errorLogs.size > 0) {
+                    console.error("Server Errors:", Array.from(errorLogs));
+                }
+            }
+
+            // Формируем ответ в едином формате
+            const transformedData = {
+                ip: alternativeGeoData.ip,
+                city: alternativeGeoData.city,
+                region: alternativeGeoData.region,
+                country: alternativeGeoData.country_name,
+                org: alternativeGeoData.org || 'Unknown Organization',
+                servers: availableServers
+            };
+
+            return new NextResponse(JSON.stringify(transformedData), {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
