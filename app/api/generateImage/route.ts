@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
-import path from 'path';
+import { tempFilesUtils } from '@/utils/tempFiles';
 
-// Генерация изображений разных размеров
 async function generateMultipleNoiseImages(): Promise<string[]> {
     const sizes = [50000, 100000, 150000, 200000, 250000, 300000];
     const imagePaths = [];
@@ -12,7 +11,8 @@ async function generateMultipleNoiseImages(): Promise<string[]> {
         const pixels = size / bytesPerPixel;
         const dimension = Math.round(Math.sqrt(pixels));
         const noiseBuffer = Buffer.from(Array.from({ length: dimension * dimension * bytesPerPixel }, () => Math.floor(Math.random() * 256)));
-        const outputPath = path.join(process.cwd(), 'public/images', `noiseImage_${size}.png`);
+        const filename = `noiseImage_${size}.png`;
+        const outputPath = tempFilesUtils.getFilePath(filename);
 
         try {
             await sharp(noiseBuffer, {
@@ -25,7 +25,7 @@ async function generateMultipleNoiseImages(): Promise<string[]> {
                 .toFormat('png')
                 .toFile(outputPath);
 
-            imagePaths.push(outputPath.replace(process.cwd(), ''));
+            imagePaths.push(tempFilesUtils.getApiPath(filename));
         } catch (error) {
             console.error('Error generating noise image:', error);
             throw error;
