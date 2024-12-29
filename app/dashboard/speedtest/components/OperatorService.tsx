@@ -17,9 +17,9 @@ const OperatorService: React.FC<OperatorServiceProps> = ({ ip, org, location }) 
                 <Anchor className={`${classes.iconTitle} ${classes.boldText}`} size="sm" mt={7} href="#" underline="hover">
                     {org}
                 </Anchor>
-                <Text size="xs" mt={7}>
-                    {ip}
-                </Text>
+                {/*<Text size="xs" mt={7}>*/}
+                {/*    {ip}*/}
+                {/*</Text>*/}
                 <Text size="xs" mt={7}>
                     {location}
                 </Text>
