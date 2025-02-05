@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Center, Grid, Group, SimpleGrid, Text } from '@mantine/core';
 import { useFetchGeolocation } from './hooks/useFetchGeolocation';
-import { useSpeedTest } from './hooks/useSpeedTest';
+import { useSpeedTest } from './hooks/useSpeedTest';  
 import { SpeedTestControls } from './components/SpeedTestControls';
 import { SpeedTestResult } from './components/SpeedTestResult';
 import OperatorService from './components/OperatorService';
@@ -12,7 +12,6 @@ import ConnectionsService from './components/ConnectionsService';
 import classes from './SpeedTest.module.css';
 import { IconArrowsDiff, IconDownload, IconUpload } from "@tabler/icons-react";
 import DashboardLayout from "@/app/dashboard/DashboardLayout";
-import { useCurrentUser } from "@/hooks/use-current-user";
 import { ServerProvider, useServer } from './contexts/ServerContext';
 import { Server } from './types/geolocation';
 
@@ -25,7 +24,6 @@ const SpeedTestContent: React.FC = () => {
     const { geolocationData, selectedServer } = useServer();
     const { uploadSpeed, downloadSpeed, pingStats, isTesting, generateAndMeasureSpeed } = useSpeedTest();
     const [loading, setLoading] = useState(true);
-    const user = useCurrentUser();
     const [selectedArrow, setSelectedArrow] = useState<'single' | 'multi'>('multi');
     const [filteredServers, setFilteredServers] = useState<Server[]>([]);
 
@@ -34,10 +32,6 @@ const SpeedTestContent: React.FC = () => {
             setLoading(false);
         }
     }, [geolocationData]);
-
-    useEffect(() => {
-        console.log('Selected server:', selectedServer);
-    }, [selectedServer]);
 
     const networkStats = [
         {
@@ -58,38 +52,6 @@ const SpeedTestContent: React.FC = () => {
             icon: IconUpload,
         },
     ];
-
-    const saveTestResult = useCallback(async () => {
-        if (!user || !geolocationData || !selectedServer) return;
-
-        const result = {
-            timestamp: new Date().toISOString(),
-            downloadSpeed: parseFloat(downloadSpeed),
-            uploadSpeed: parseFloat(uploadSpeed),
-            ping: pingStats?.avg ?? null,
-            userLocation: `${geolocationData.city}, ${geolocationData.region}, ${geolocationData.country}`,
-            isp: geolocationData.org,
-            userId: user.id,
-            serverName: selectedServer.name,
-            serverLocation: `${selectedServer.location.city}, ${selectedServer.location.region}, ${selectedServer.location.country}`,
-        };
-
-        console.log('Test result to be saved:', result);
-
-        await fetch('/api/speedtest', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(result),
-        });
-    }, [user, geolocationData, selectedServer, downloadSpeed, uploadSpeed, pingStats]);
-
-    useEffect(() => {
-        if (!isTesting && downloadSpeed && uploadSpeed && pingStats?.avg !== null) {
-            saveTestResult().catch(console.error);
-        }
-    }, [isTesting, downloadSpeed, uploadSpeed, pingStats, saveTestResult]);
 
     return (
         <Grid gutter="md">

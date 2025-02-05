@@ -88,9 +88,12 @@ model SpeedTestHistory {
   downloadSpeed  Float
   uploadSpeed    Float
   ping           Float
-  userLocation   String
-  isp            String
+  jitter         Float?
+  userLocation   String?
+  isp            String?
   serverName     String?
   serverLocation String?
-  userId         String
+  userId         String?
+  provider       String?
+  testType       String?
 }

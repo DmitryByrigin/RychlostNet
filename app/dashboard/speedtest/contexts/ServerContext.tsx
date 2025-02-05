@@ -49,7 +49,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const processedServers = sortedServers.length > 0 
                 ? sortedServers.map(server => ({
                     ...server,
-                    url: server.url?.includes('/speedtest/test') ? server.url : server.url ? `${server.url}/speedtest/test` : ''
+                    url: server.url || ''
                 }))
                 : [];
 

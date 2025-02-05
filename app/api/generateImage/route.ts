@@ -1,35 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sharp from 'sharp';
 import { tempFilesUtils } from '@/utils/tempFiles';
+import fs from 'fs/promises';
 
-async function generateMultipleNoiseImages(): Promise<string[]> {
-    const sizes = [50000, 100000, 150000, 200000, 250000, 300000];
-    const imagePaths = [];
+async function generateNoiseImage(size: number): Promise<string> {
+    // Создаем буфер фиксированного размера
+    const noiseBuffer = Buffer.alloc(size);
+    
+    // Заполняем буфер случайными данными
+    for (let i = 0; i < size; i++) {
+        noiseBuffer[i] = Math.floor(Math.random() * 256);
+    }
+    
+    console.log(`Buffer size before saving: ${noiseBuffer.length} bytes`);
+    
+    const filename = `noiseData_${size}.bin`;
+    const outputPath = tempFilesUtils.getFilePath(filename);
 
-    for (const size of sizes) {
-        const bytesPerPixel = 3;
-        const pixels = size / bytesPerPixel;
-        const dimension = Math.round(Math.sqrt(pixels));
-        const noiseBuffer = Buffer.from(Array.from({ length: dimension * dimension * bytesPerPixel }, () => Math.floor(Math.random() * 256)));
-        const filename = `noiseImage_${size}.png`;
-        const outputPath = tempFilesUtils.getFilePath(filename);
-
-        try {
-            await sharp(noiseBuffer, {
-                raw: {
-                    width: dimension,
-                    height: dimension,
-                    channels: 3
-                }
-            })
-                .toFormat('png')
-                .toFile(outputPath);
-
-            imagePaths.push(tempFilesUtils.getApiPath(filename));
-        } catch (error) {
-            console.error('Error generating noise image:', error);
-            throw error;
+    try {
+        // Записываем бинарные данные напрямую
+        await fs.writeFile(outputPath, noiseBuffer);
+        
+        // Проверяем размер записанного файла
+        const stats = await fs.stat(outputPath);
+        console.log(`File size after saving: ${stats.size} bytes`);
+        
+        // Проверяем, что размер файла соответствует ожидаемому
+        if (stats.size !== size) {
+            throw new Error(`File size mismatch: expected ${size} bytes, got ${stats.size} bytes`);
         }
+        
+        const apiPath = tempFilesUtils.getApiPath(filename);
+        console.log(`Generated file: ${filename}, API path: ${apiPath}`);
+        
+        return apiPath;
+    } catch (error) {
+        console.error('Error generating noise data:', error);
+        throw error;
+    }
+}
+
+async function generateMultipleNoiseImages(sizes: number[]): Promise<string[]> {
+    const imagePaths = [];
+    const defaultSizes = [1, 2, 5, 10, 20, 50].map(mb => mb * 1024 * 1024);
+    const targetSizes = sizes && sizes.length > 0 ? sizes : defaultSizes;
+
+    for (const size of targetSizes) {
+        const path = await generateNoiseImage(size);
+        imagePaths.push(path);
     }
 
     return imagePaths;
@@ -41,44 +58,27 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const startUploadTime = Date.now();
-        const buffer = await req.arrayBuffer();
-        const uploadTimeTaken = Date.now() - startUploadTime;
-        const uploadSize = buffer.byteLength;
+        const body = await req.json();
+        const sizes = body.sizes || [];
+        
+        const startTime = performance.now();
+        const imagePaths = await generateMultipleNoiseImages(sizes);
+        const endTime = performance.now();
+        
+        const generationTime = endTime - startTime;
+        console.log(`Generated ${imagePaths.length} images in ${generationTime}ms`);
 
-        const imagePaths = await generateMultipleNoiseImages();
-
-        const largeResponseData = Buffer.alloc(5 * 1024 * 1024, 'a'); // 5MB data for download speed test
-        const downloadSpeedKbps = (largeResponseData.byteLength / (uploadTimeTaken / 1000)) / 1024;
-
-        const uploadSpeedKbps = (uploadSize / (uploadTimeTaken / 1000)) / 1024;
-
-        return new NextResponse(
-            JSON.stringify({
-                imagePaths,
-                uploadSpeed: `${uploadSpeedKbps.toFixed(2)} Kbps`,
-                downloadSpeed: `${downloadSpeedKbps.toFixed(2)} Kbps`,
-                largeResponseData: largeResponseData.toString('base64')
-            }), {
-                status: 200,
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-    } catch (error) {
-        console.error('Error:', error);
-        return new NextResponse(JSON.stringify({ error: 'Internal Server Error' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
+        return NextResponse.json({
+            imagePaths,
+            generationTime,
+            message: 'Images generated successfully'
         });
+    } catch (error) {
+        console.error('Error in generateImage route:', error);
+        return new NextResponse('Internal Server Error', { status: 500 });
     }
 }
 
 export async function GET(req: NextRequest) {
-    if (req.method !== 'GET') {
-        return new NextResponse('Method Not Allowed', { status: 405 });
-    }
-
-    return new NextResponse('Pong', { status: 200 });
+    return new NextResponse('Method Not Allowed', { status: 405 });
 }
