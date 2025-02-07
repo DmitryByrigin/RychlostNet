@@ -12,8 +12,12 @@ export async function GET(req: NextRequest) {
             const geoResponse = await fetch(
                 `https://api.ipdata.co/?api-key=63c4dfaccc7a5385fa75956c7d58ae869791a2a2a204c7f21f5034f8`,
                 {
+                    cache: 'no-store',
                     headers: {
                         'Accept': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
                     }
                 }
             );
@@ -38,7 +42,9 @@ export async function GET(req: NextRequest) {
                         status: 200,
                         headers: {
                             'Content-Type': 'application/json',
-                            'Cache-Control': 'public, max-age=3600',
+                            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+                            'Pragma': 'no-cache',
+                            'Expires': '0'
                         },
                     });
                 }
@@ -51,9 +57,20 @@ export async function GET(req: NextRequest) {
                 }
             }
 
+            // Добавляем задержку перед использованием следующего сервиса
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
             // Если ipdata.co не сработал, используем ipapi.co
             console.log('Using fallback service (ipapi.co)...');
-            const fallbackResponse = await fetch('https://ipapi.co/json/');
+            const fallbackResponse = await fetch('https://ipapi.co/json/', {
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
             
             if (fallbackResponse.ok) {
                 const fallbackData = await fallbackResponse.json();
@@ -74,7 +91,9 @@ export async function GET(req: NextRequest) {
                     status: 200,
                     headers: {
                         'Content-Type': 'application/json',
-                        'Cache-Control': 'public, max-age=3600',
+                        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
                     },
                 });
             }
@@ -93,15 +112,22 @@ export async function GET(req: NextRequest) {
 // Вспомогательная функция для получения информации о серверах
 async function getServerInfo() {
     const serverUrls = process.env.NEXT_PUBLIC_API_SERVERS?.split(',') || [];
+    console.log('Starting server info fetch...');
     const errorLogs = new Set<string>();
     let availableServers = [];
 
     if (serverUrls.length > 0) {
         const serverRequests = serverUrls.map(async (serverUrl) => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            // Увеличиваем таймаут до 15 секунд
+            const timeoutId = setTimeout(() => {
+                console.log(`Timeout reached for server ${serverUrl}`);
+                controller.abort();
+            }, 15000);
 
             try {
+                console.log(`Fetching server info from: ${serverUrl}`);
+                const startTime = Date.now();
                 const response = await fetch(`${serverUrl}/speedtest/server-info`, {
                     signal: controller.signal,
                     cache: 'no-store',
@@ -111,34 +137,45 @@ async function getServerInfo() {
                         'Expires': '0'
                     }
                 });
+                const endTime = Date.now();
+                console.log(`Response received from ${serverUrl} in ${endTime - startTime}ms`);
                 clearTimeout(timeoutId);
 
                 if (response.ok) {
                     const data = await response.json();
+                    console.log(`Successfully parsed data from ${serverUrl}`);
                     return { ...data, url: serverUrl };
                 } else {
-                    errorLogs.add(`Server ${serverUrl} responded with status ${response.status}`);
+                    const error = `Server ${serverUrl} responded with status ${response.status}`;
+                    console.error(error);
+                    errorLogs.add(error);
                 }
             } catch (error: unknown) {
                 if (error instanceof Error) {
-                    if (error.name === 'AbortError') {
-                        errorLogs.add(`Server ${serverUrl} timed out`);
-                    } else {
-                        errorLogs.add(`Error fetching server info from ${serverUrl}: ${error.message}`);
-                    }
+                    const errorMsg = error.name === 'AbortError'
+                        ? `Server ${serverUrl} timed out after 15 seconds`
+                        : `Error fetching server info from ${serverUrl}: ${error.message}`;
+                    console.error(errorMsg);
+                    errorLogs.add(errorMsg);
                 } else {
-                    errorLogs.add(`Unknown error fetching server info from ${serverUrl}`);
+                    const errorMsg = `Unknown error fetching server info from ${serverUrl}`;
+                    console.error(errorMsg);
+                    errorLogs.add(errorMsg);
                 }
             }
             return null;
         });
 
+        console.log('Waiting for all server responses...');
         const serverResponses = await Promise.all(serverRequests);
         availableServers = serverResponses.filter((server) => server !== null);
 
         if (errorLogs.size > 0) {
             console.error("Server Errors:", Array.from(errorLogs));
         }
+        console.log(`Found ${availableServers.length} available servers:`, availableServers);
+    } else {
+        console.warn('No server URLs provided in environment variable NEXT_PUBLIC_API_SERVERS');
     }
 
     return { servers: availableServers };
