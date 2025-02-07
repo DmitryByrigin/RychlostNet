@@ -6,63 +6,10 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // Попытка использовать основной сервис
-        try {
-            console.log('Trying primary service (ipdata.co)...');
-            const geoResponse = await fetch(
-                `https://api.ipdata.co/?api-key=63c4dfaccc7a5385fa75956c7d58ae869791a2a2a204c7f21f5034f8`,
-                {
-                    cache: 'no-store',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
-                }
-            );
-
-            if (geoResponse.ok) {
-                const geoData = await geoResponse.json();
-                console.log('Successfully received data from ipdata.co');
-
-                if (geoData && geoData.city && geoData.region && geoData.country_name) {
-                    const serverData = await getServerInfo();
-                    const responseData = {
-                        ip: geoData.ip,
-                        city: geoData.city,
-                        region: geoData.region,
-                        country: geoData.country_name,
-                        org: geoData.asn?.name || 'Unknown Organization',
-                        servers: serverData.servers,
-                        source: 'ipdata.co' // Добавляем источник данных
-                    };
-
-                    return new NextResponse(JSON.stringify(responseData), {
-                        status: 200,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-                            'Pragma': 'no-cache',
-                            'Expires': '0'
-                        },
-                    });
-                }
-            }
-
-            if (!geoResponse.ok) {
-                console.log(`ipdata.co failed with status ${geoResponse.status}`);
-                if (geoResponse.status === 429) {
-                    console.log('Rate limit exceeded for ipdata.co');
-                }
-            }
-
-            // Добавляем задержку перед использованием следующего сервиса
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Если ipdata.co не сработал, используем ipapi.co
-            console.log('Using fallback service (ipapi.co)...');
-            const fallbackResponse = await fetch('https://ipapi.co/json/', {
+        console.log('Trying primary service (ipdata.co)...');
+        const geoResponse = await fetch(
+            `https://api.ipdata.co/?api-key=63c4dfaccc7a5385fa75956c7d58ae869791a2a2a204c7f21f5034f8ЕЕЕ`,
+            {
                 cache: 'no-store',
                 headers: {
                     'Accept': 'application/json',
@@ -70,21 +17,23 @@ export async function GET(req: NextRequest) {
                     'Pragma': 'no-cache',
                     'Expires': '0'
                 }
-            });
-            
-            if (fallbackResponse.ok) {
-                const fallbackData = await fallbackResponse.json();
-                console.log('Successfully received data from ipapi.co');
-                const serverData = await getServerInfo();
+            }
+        );
 
+        if (geoResponse.ok) {
+            const geoData = await geoResponse.json();
+            console.log('Successfully received data from ipdata.co');
+
+            if (geoData && geoData.city && geoData.region && geoData.country_name) {
+                const serverData = await getServerInfo();
                 const responseData = {
-                    ip: fallbackData.ip,
-                    city: fallbackData.city,
-                    region: fallbackData.region,
-                    country: fallbackData.country_name,
-                    org: fallbackData.org || 'Unknown Organization',
+                    ip: geoData.ip,
+                    city: geoData.city,
+                    region: geoData.region,
+                    country: geoData.country_name,
+                    org: geoData.asn?.name || 'Unknown Organization',
                     servers: serverData.servers,
-                    source: 'ipapi.co' // Добавляем источник данных
+                    source: 'ipdata.co'
                 };
 
                 return new NextResponse(JSON.stringify(responseData), {
@@ -97,15 +46,63 @@ export async function GET(req: NextRequest) {
                     },
                 });
             }
-
-            throw new Error('Both geolocation services failed');
-        } catch (error) {
-            console.error('Error in geolocation API:', error);
-            return new NextResponse(JSON.stringify({ error: 'Failed to fetch geolocation data' }), { status: 500 });
         }
+
+        // Если первичный сервис не сработал, логируем ошибку
+        console.log(`ipdata.co failed with status ${geoResponse.status}`);
+        if (geoResponse.status === 429) {
+            console.log('Rate limit exceeded for ipdata.co');
+        }
+
+        // Добавляем задержку перед использованием следующего сервиса
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Пробуем резервный сервис
+        console.log('Using fallback service (ipapi.co)...');
+        const fallbackResponse = await fetch('https://ipapi.co/json/', {
+            cache: 'no-store',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
+        
+        if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            console.log('Successfully received data from ipapi.co');
+            const serverData = await getServerInfo();
+
+            const responseData = {
+                ip: fallbackData.ip,
+                city: fallbackData.city,
+                region: fallbackData.region,
+                country: fallbackData.country_name,
+                org: fallbackData.org || 'Unknown Organization',
+                servers: serverData.servers,
+                source: 'ipapi.co'
+            };
+
+            return new NextResponse(JSON.stringify(responseData), {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                },
+            });
+        }
+
+        // Если оба сервиса не сработали
+        throw new Error('Both geolocation services failed');
     } catch (error) {
         console.error('Error in geolocation API:', error);
-        return new NextResponse(JSON.stringify({ error: 'Failed to fetch geolocation data' }), { status: 500 });
+        return new NextResponse(JSON.stringify({ 
+            error: 'Failed to fetch geolocation data',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }), { status: 500 });
     }
 }
 
