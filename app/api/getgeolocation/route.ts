@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import {NextRequest, NextResponse} from 'next/server';
 
 export async function GET(req: NextRequest) {
     if (req.method !== 'GET') {
@@ -6,9 +6,11 @@ export async function GET(req: NextRequest) {
     }
 
     try {
+        const serverData = await getServerInfo();
+
         console.log('Trying primary service (ipdata.co)...');
         const geoResponse = await fetch(
-            `https://api.ipdata.co/?api-key=63c4dfaccc7a5385fa75956c7d58ae869791a2a2a204c7f21f5034f8ЕЕЕ`,
+            `https://api.ipdata.co/?api-key=63c4dfaccc7a5385fa75956c7d58ae869791a2a2a204c7f21f5034f8`,
             {
                 cache: 'no-store',
                 headers: {
@@ -25,7 +27,7 @@ export async function GET(req: NextRequest) {
             console.log('Successfully received data from ipdata.co');
 
             if (geoData && geoData.city && geoData.region && geoData.country_name) {
-                const serverData = await getServerInfo();
+                // const serverData = await getServerInfo();
                 const responseData = {
                     ip: geoData.ip,
                     city: geoData.city,
@@ -59,20 +61,35 @@ export async function GET(req: NextRequest) {
 
         // Пробуем резервный сервис
         console.log('Using fallback service (ipapi.co)...');
-        const fallbackResponse = await fetch('https://ipapi.co/json/', {
-            cache: 'no-store',
-            headers: {
-                'Accept': 'application/json',
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
+        let fallbackResponse;
+        try {
+            fallbackResponse = await fetch('https://ipapi.co/json/', {
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
+
+            console.log(`ipapi.co response status: ${fallbackResponse.status}`);
+            
+            if (!fallbackResponse.ok) {
+                console.error(`ipapi.co failed with status ${fallbackResponse.status}`);
+                throw new Error(`ipapi.co returned status ${fallbackResponse.status}`);
             }
-        });
-        
-        if (fallbackResponse.ok) {
+
             const fallbackData = await fallbackResponse.json();
+            
+            // Проверяем наличие необходимых полей в ответе
+            if (!fallbackData.ip || !fallbackData.city || !fallbackData.region || !fallbackData.country_name) {
+                console.error('ipapi.co returned incomplete data:', fallbackData);
+                throw new Error('Incomplete data received from ipapi.co');
+            }
+
             console.log('Successfully received data from ipapi.co');
-            const serverData = await getServerInfo();
+            // const serverData = await getServerInfo();
 
             const responseData = {
                 ip: fallbackData.ip,
@@ -93,10 +110,11 @@ export async function GET(req: NextRequest) {
                     'Expires': '0'
                 },
             });
+        } catch (fallbackError: unknown) {
+            console.error('Error with fallback service (ipapi.co):', fallbackError);
+            // Если оба сервиса не сработали, возвращаем детальную ошибку
+            throw new Error(`Both geolocation services failed. Primary: ${geoResponse.status}, Fallback: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
         }
-
-        // Если оба сервиса не сработали
-        throw new Error('Both geolocation services failed');
     } catch (error) {
         console.error('Error in geolocation API:', error);
         return new NextResponse(JSON.stringify({ 
@@ -164,8 +182,7 @@ async function getServerInfo() {
         });
 
         console.log('Waiting for all server responses...');
-        const serverResponses = await Promise.all(serverRequests);
-        availableServers = serverResponses.filter((server) => server !== null);
+        availableServers = await Promise.all(serverRequests);
 
         if (errorLogs.size > 0) {
             console.error("Server Errors:", Array.from(errorLogs));
