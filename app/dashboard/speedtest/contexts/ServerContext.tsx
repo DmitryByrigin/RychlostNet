@@ -4,7 +4,7 @@ import { GeolocationData, Server } from '../types/geolocation';
 interface ServerContextType {
     geolocationData: GeolocationData | null;
     selectedServer: Server | null;
-    setCurrentServer: (serverName: string) => void;
+    setCurrentServer: (serverName: string) => void; 
 }
 
 const ServerContext = createContext<ServerContextType | null>(null);
@@ -23,6 +23,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const fetchGeolocationData = async (): Promise<void> => {
         try {
+            console.log('Fetching geolocation data...');
             const response = await fetch('/api/getgeolocation', {
                 cache: 'no-store',
                 headers: {
@@ -35,15 +36,19 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data: GeolocationData = await response.json();
-            console.log('Fetched geolocation data:', data);
+            console.log('Raw geolocation data:', data);
 
             // Initialize empty servers array if not present
             if (!data.servers) {
+                console.warn('No servers array in response, initializing empty array');
                 data.servers = [];
             }
 
             const serversArray = Array.isArray(data.servers) ? data.servers : [data.servers];
+            console.log('Servers array:', serversArray);
+            
             const sortedServers = serversArray.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+            console.log('Sorted servers:', sortedServers);
 
             // Only process servers if they exist
             const processedServers = sortedServers.length > 0 
@@ -52,6 +57,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     url: server.url || ''
                 }))
                 : [];
+            console.log('Processed servers:', processedServers);
 
             const newData = {
                 ...data,
