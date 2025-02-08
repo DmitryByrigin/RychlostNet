@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
 
     try {
         const serverData = await getServerInfo();
+        console.log(serverData);
 
         console.log('Trying primary service (ipdata.co)...');
         const geoResponse = await fetch(

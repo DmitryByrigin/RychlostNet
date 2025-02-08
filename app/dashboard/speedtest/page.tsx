@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Center, Grid, Group, SimpleGrid, Text } from '@mantine/core';
 import { useFetchGeolocation } from './hooks/useFetchGeolocation';
-import { useSpeedTest } from './hooks/useSpeedTest';  
+import { useSpeedTest } from './hooks/useSpeedTest';   
 import { SpeedTestControls } from './components/SpeedTestControls';
 import { SpeedTestResult } from './components/SpeedTestResult';
 import OperatorService from './components/OperatorService';

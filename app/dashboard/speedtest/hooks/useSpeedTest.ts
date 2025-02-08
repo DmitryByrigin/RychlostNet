@@ -5,7 +5,7 @@ interface PingStats {
     min: number; 
     max: number;
     avg: number;
-    jitter: number; 
+    jitter: number;  
 }
 
 interface SpeedTestResult {
@@ -310,25 +310,64 @@ export const useSpeedTest = () => {
                 const regularDownloadMbps = parseFloat(speedTestData.downloadSpeed);
                 const regularUploadMbps = parseFloat(speedTestData.uploadSpeed);
 
+                // Получаем значения пинга из CLI теста
+                const cliPing = cliTestData.ping || {};
+                const cliPingValues = {
+                    min: cliPing.min ? parseFloat(cliPing.min) : null,
+                    max: cliPing.max ? parseFloat(cliPing.max) : null,
+                    avg: cliPing.avg ? parseFloat(cliPing.avg) : parseFloat(cliPing.latency || '0'),
+                    jitter: parseFloat(cliPing.jitter || '0')
+                };
+
+                // Получаем значения пинга из регулярного теста
+                const regularPing = speedTestData.ping || {};
+                const regularPingValues = {
+                    min: parseFloat(regularPing.min || '0'),
+                    max: parseFloat(regularPing.max || '0'),
+                    avg: parseFloat(regularPing.avg || '0'),
+                    jitter: parseFloat(regularPing.jitter || '0')
+                };
+
                 // Вычисляем средневзвешенное значение (70% CLI, 30% regular)
                 const correctedDownload = (cliDownloadMbps * 0.7 + regularDownloadMbps * 0.3).toFixed(2);
                 const correctedUpload = (cliUploadMbps * 0.7 + regularUploadMbps * 0.3).toFixed(2);
 
+                // Комбинируем результаты пинга, предпочитая CLI значения, если они доступны
+                const combinedPing = {
+                    min: (cliPingValues.min || regularPingValues.min).toFixed(2),
+                    max: (cliPingValues.max || regularPingValues.max).toFixed(2),
+                    avg: (cliPingValues.avg || regularPingValues.avg).toFixed(2),
+                    jitter: (cliPingValues.jitter || regularPingValues.jitter).toFixed(2)
+                };
+
                 finalResults = {
                     ...speedTestData,
                     downloadSpeed: `${correctedDownload} Mbps`,
-                    uploadSpeed: `${correctedUpload} Mbps`
+                    uploadSpeed: `${correctedUpload} Mbps`,
+                    ping: combinedPing
                 };
+
+                console.log('Combined test results:', {
+                    cli: {
+                        ping: cliTestData.ping,
+                        parsed: cliPingValues
+                    },
+                    regular: {
+                        ping: speedTestData.ping,
+                        parsed: regularPingValues
+                    },
+                    final: combinedPing
+                });
             }
 
             // Устанавливаем финальные результаты для отображения
             setUploadSpeed(finalResults.uploadSpeed);
             setDownloadSpeed(finalResults.downloadSpeed);
             setPingStats({
-                min: parseFloat(finalResults.ping.min),
-                max: parseFloat(finalResults.ping.max),
-                avg: parseFloat(finalResults.ping.avg),
-                jitter: parseFloat(finalResults.ping.jitter),
+                min: parseFloat(finalResults.ping.min) || 0,
+                max: parseFloat(finalResults.ping.max) || 0,
+                avg: parseFloat(finalResults.ping.avg) || 0,
+                jitter: parseFloat(finalResults.ping.jitter) || 0
             });
 
             setProgress(100);
