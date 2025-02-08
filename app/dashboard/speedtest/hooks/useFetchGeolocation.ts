@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import { GeolocationData, Server } from '../types/geolocation';
+import { useClientGeolocation } from './useClientGeolocation';
 
-export const useFetchGeolocation = () => {
+export const useFetchGeolocation = (): {
+    geolocationData: GeolocationData | null;
+    error: string | null;
+    refetch: () => Promise<void>;
+} => {
     const [geolocationData, setGeolocationData] = useState<GeolocationData | null>(null);
-    const [selectedServer, setSelectedServer] = useState<Server | null>(null);
-    const [currentSponsor, setCurrentSponsor] = useState<string>('');
+    const [error, setError] = useState<string | null>(null);
+    const { clientLocation } = useClientGeolocation();
 
     const fetchGeolocationData = async (): Promise<void> => {
         try {
@@ -12,83 +17,76 @@ export const useFetchGeolocation = () => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const data: GeolocationData = await response.json();
-            console.log('Fetched geolocation data:', data);
+            const data = await response.json();
+            console.log('Server data:', data);
 
-            const serversArray = Array.isArray(data.servers) ? data.servers : [data.servers];
-            const sortedServers = serversArray.sort((a, b) => a.distance - b.distance);
+            if (!data.servers) {
+                console.warn('No servers array in response');
+                return;
+            }
 
-            // Убедимся, что у каждого сервера есть правильный URL для тестирования
-            const processedServers = sortedServers.map(server => ({
-                ...server,
-                url: server.url.includes('/speedtest/test') ? server.url : `${server.url}/speedtest/test`
-            }));
-
-            const newData = {
-                ...data,
-                servers: processedServers,
+            // Создаем базовые данные о местоположении
+            const baseLocation: GeolocationData = {
+                ip: clientLocation?.ip || 'Unknown',
+                city: clientLocation?.city || 'Unknown',
+                region: clientLocation?.region || 'Unknown',
+                country: clientLocation?.country || 'Unknown',
+                org: clientLocation?.org || 'Unknown',
+                lat: clientLocation?.lat || 0,
+                lon: clientLocation?.lon || 0,
+                servers: []
             };
 
-            setGeolocationData(newData);
-            console.log('Updated geolocation data:', newData);
+            // Рассчитываем расстояния для серверов
+            const serversWithDistance = data.servers.map((server: Server) => {
+                const distance = calculateDistance(
+                    { lat: server.lat, lon: server.lon },
+                    { lat: baseLocation.lat, lon: baseLocation.lon }
+                );
+                return { ...server, distance };
+            });
 
-            // Set initial server only if no server is currently selected
-            if (!selectedServer) {
-                const initialServer = processedServers[0];
-                if (initialServer) {
-                    console.log('Setting initial server:', initialServer);
-                    setSelectedServer(initialServer);
-                    setCurrentSponsor(Array.isArray(initialServer.sponsor) ? initialServer.sponsor.join(', ') : initialServer.sponsor);
-                }
-            }
+            // Сортируем серверы по расстоянию
+            const sortedServers = serversWithDistance.sort((a: Server, b: Server) => 
+                (a.distance || 0) - (b.distance || 0)
+            );
+
+            setGeolocationData({
+                ...baseLocation,
+                servers: sortedServers
+            });
         } catch (error) {
+            setError(error instanceof Error ? error.message : 'Failed to fetch geolocation data');
             console.error('Failed to fetch geolocation data', error);
-            throw error;
         }
     };
 
     useEffect(() => {
+        // Запускаем fetchGeolocationData даже если clientLocation еще не получен
         fetchGeolocationData().catch((error) => console.error('Error in useEffect:', error));
-    }, []);
-
-    useEffect(() => {
-        if (selectedServer) {
-            console.log('Selected server changed:', {
-                name: selectedServer.name,
-                url: selectedServer.url,
-                sponsor: selectedServer.sponsor
-            });
-        }
-    }, [selectedServer]);
-
-    const setCurrentServer = (serverName: string) => {
-        if (geolocationData) {
-            const server = geolocationData.servers.find(s => s.name === serverName);
-            console.log('Setting current server:', { 
-                serverName, 
-                foundServer: server ? {
-                    name: server.name,
-                    url: server.url,
-                    sponsor: server.sponsor
-                } : null,
-                allServers: geolocationData.servers.map(s => ({
-                    name: s.name,
-                    url: s.url
-                }))
-            });
-            if (server) {
-                setSelectedServer(server);
-            }
-        }
-    };
+    }, [clientLocation]); // Будет перезапускаться когда clientLocation обновится
 
     return {
         geolocationData,
-        currentServer: selectedServer?.name || '',
-        currentServerUrl: selectedServer?.url || '',
-        currentSponsor,
-        selectedServer,
-        setCurrentServer,
-        setCurrentSponsor,
+        error,
+        refetch: fetchGeolocationData
     };
 };
+
+// Функция для расчета расстояния между двумя точками
+function calculateDistance(point1: { lat: number; lon: number }, point2: { lat: number; lon: number }): number {
+    const R = 6371; // Радиус Земли в километрах
+    const dLat = toRad(point2.lat - point1.lat);
+    const dLon = toRad(point2.lon - point1.lon);
+    const lat1 = toRad(point1.lat);
+    const lat2 = toRad(point2.lat);
+
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function toRad(value: number): number {
+    return value * Math.PI / 180;
+}

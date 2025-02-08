@@ -23,5 +23,7 @@ export interface GeolocationData {
     region: string;
     country: string;
     org: string;
+    lat: number;
+    lon: number;
     servers: Server[];
 }
