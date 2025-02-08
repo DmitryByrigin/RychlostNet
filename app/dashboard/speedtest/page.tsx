@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card, Center, Grid, Group, SimpleGrid, Text } from '@mantine/core';
+import { Button, Card, Center, Grid, Group, SimpleGrid, Text } from '@mantine/core';
 import { useFetchGeolocation } from './hooks/useFetchGeolocation';
 import { useSpeedTest } from './hooks/useSpeedTest';   
 import { SpeedTestControls } from './components/SpeedTestControls';
@@ -53,6 +53,11 @@ const SpeedTestContent: React.FC = () => {
         },
     ];
 
+
+    const testCLI = async () => {
+        await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/cli`, { method: 'GET' }).then(response => response.json()).then(data => console.log(data)).catch(error => console.error(error));
+    }
+
     return (
         <Grid gutter="md">
             <Grid.Col span={{ base: 12, md: 6 }}>
@@ -70,6 +75,7 @@ const SpeedTestContent: React.FC = () => {
                     <Group justify="space-between">
                         <Text className={classes.title}>Services</Text>
                     </Group>
+                    <Button onClick={() => testCLI()}>Test CLI</Button>
                     <SimpleGrid cols={1} mt="md">
                         {loading ? (
                             <>
