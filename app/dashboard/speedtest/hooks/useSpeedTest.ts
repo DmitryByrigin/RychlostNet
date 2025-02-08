@@ -288,7 +288,7 @@ export const useSpeedTest = () => {
                 cliTestData
             });
 
-            const speedTestResponse = await fetch('/api/speedtest', {
+            const speedTestResponse = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/test`, {
                 method: 'POST',
                 body: formData
             });
@@ -384,7 +384,7 @@ export const useSpeedTest = () => {
     };
 
     const runCLITest = async () => {
-        const response = await fetch('/api/speedtest/cli');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/cli`);
         if (!response.ok) throw new Error('CLI test failed');
         return response.json();
     };

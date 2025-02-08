@@ -75,7 +75,6 @@ const SpeedTestContent: React.FC = () => {
                     <Group justify="space-between">
                         <Text className={classes.title}>Services</Text>
                     </Group>
-                    <Button onClick={() => testCLI()}>Test CLI</Button>
                     <SimpleGrid cols={1} mt="md">
                         {loading ? (
                             <>
