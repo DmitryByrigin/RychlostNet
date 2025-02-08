@@ -195,7 +195,7 @@ export const useSpeedTest = () => {
             setProgress(10);
             let cliTestData;
             try {
-                const cliTestResponse = await fetch('/api/speedtest/cli', {
+                const cliTestResponse = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/cli`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json'
