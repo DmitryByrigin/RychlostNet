@@ -7,16 +7,15 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const serverData = await getServerInfo();
-        console.log(serverData);
+        const backendUrl = process.env.NEXT_PUBLIC_API_SERVERS || 'http://localhost:3001';
+        const response = await fetch(`${backendUrl}/speedtest/server-info`);
+        if (!response.ok) {
+            throw new Error(`Backend responded with status: ${response.status}`);
+        }
 
-        // Возвращаем только информацию о серверах
-        const responseData = {
-            servers: serverData.servers,
-            source: 'server-info'
-        };
-
-        return new NextResponse(JSON.stringify(responseData), {
+        const data = await response.json();
+        
+        return new NextResponse(JSON.stringify(data), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -29,34 +28,4 @@ export async function GET(req: NextRequest) {
         console.error('Error in getgeolocation:', error);
         return new NextResponse(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
     }
-}
-
-// Вспомогательная функция для получения информации о серверах
-async function getServerInfo(): Promise<{ servers: Server[] }> {
-    const serverUrl = process.env.APP_SERVER_URL || 'http://localhost:3000';
-    const sponsor = process.env.SPONSOR || 'BBXNET';
-    const organization = process.env.ORGANIZATION || 'BBXNET s. r. o.';
-
-    return {
-        servers: [
-            {
-                url: serverUrl,
-                lat: 59.938629150390625,
-                lon: 30.314130783081055,
-                distance: 0,
-                name: process.env.NAME || 'Test BBXNET Server - Development',
-                country: 'Russia',
-                cc: 'Russia',
-                sponsor: sponsor,
-                id: '1',
-                host: '62.76.233.48',
-                location: {
-                    city: 'Saint Petersburg',
-                    region: 'St. Petersburg',
-                    country: 'Russia',
-                    org: organization
-                }
-            }
-        ]
-    };
 }

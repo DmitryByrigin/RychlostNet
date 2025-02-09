@@ -2,14 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useServer } from '../contexts/ServerContext';
 
 interface PingStats {
-    min: number; 
+    min: number;
     max: number;
     avg: number;
-    jitter: number;  
+    jitter: number;
 }
 
 interface SpeedTestResult {
-    fileName: string;
     size: number;
     time: number;
 }
@@ -20,168 +19,291 @@ export const useSpeedTest = () => {
     const [pingStats, setPingStats] = useState<PingStats>({ min: 0, max: 0, avg: 0, jitter: 0 });
     const [isTesting, setIsTesting] = useState(false);
     const [progress, setProgress] = useState(0);
-    const { selectedServer, geolocationData } = useServer();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const PARALLEL_CONNECTIONS = 8;
+    const { selectedServer } = useServer();
     const testInProgressRef = useRef(false);
 
-    useEffect(() => {
-        if (selectedServer) {
-            console.log('Speed test server updated:', {
-                name: selectedServer.name,
-                url: selectedServer.url,
-                sponsor: selectedServer.sponsor
-            });
-        }
-    }, [selectedServer]);
-
-    const loadImageWithProgress = async (url: string): Promise<{ size: number; time: number; data: ArrayBuffer }> => {
-        console.log(`Starting to fetch: ${url}`);
-        const startTime = performance.now();
-        
-        // Получаем токен авторизации
-        const token = localStorage.getItem('auth_token');
-        
-        // Проверяем заголовки запроса
-        const headers: Record<string, string> = {
-            'Accept': '*/*',
-            'Cache-Control': 'no-cache'
-        };
-
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        console.log('Request headers:', headers);
-        
-        const response = await fetch(url, { headers });
-        if (!response.ok) {
-            console.error('Fetch failed:', {
-                status: response.status,
-                statusText: response.statusText,
-                headers: Object.fromEntries(response.headers.entries())
-            });
-            throw new Error(`Failed to fetch data at URL: ${url}`);
-        }
-
-        // Получаем размер файла из заголовков
-        const contentLength = response.headers.get('content-length');
-        const expectedSize = contentLength ? parseInt(contentLength, 10) : 0;
-
-        // Логируем заголовки ответа
-        console.log('Response headers:', {
-            contentType: response.headers.get('content-type'),
-            contentLength: expectedSize,
-            allHeaders: Object.fromEntries(response.headers.entries())
-        });
-
-        // Читаем файл как ArrayBuffer
-        const data = await response.arrayBuffer();
-        const endTime = performance.now();
-
-        // Проверяем содержимое буфера
-        const view = new Uint8Array(data);
-        console.log('Received data:', {
-            expectedSize,
-            actualSize: data.byteLength,
-            firstBytes: Array.from(view.slice(0, 10)),
-            lastBytes: Array.from(view.slice(-10)),
-            time: endTime - startTime
-        });
-
-        // Проверяем соответствие размеров
-        if (expectedSize > 0 && data.byteLength !== expectedSize) {
-            console.error(`Size mismatch: expected ${expectedSize} bytes, got ${data.byteLength} bytes`);
-            throw new Error(`Size mismatch: expected ${expectedSize} bytes, got ${data.byteLength} bytes`);
-        }
-
-        // Извлекаем размер из имени файла
-        const match = url.match(/noiseData_(\d+)\.bin/);
-        const originalSize = match ? parseInt(match[1], 10) : expectedSize;
-
-        console.log(`File size information:`, {
-            url,
-            expectedSize,
-            actualSize: data.byteLength,
-            originalSize,
-            extractedFromName: match ? match[1] : 'not found'
-        });
-
-        return {
-            size: originalSize,
-            time: endTime - startTime,
-            data
-        };
+    const formatSpeed = (bytesPerSecond: number): string => {
+        const mbps = bytesPerSecond / (1024 * 1024);
+        return `${mbps.toFixed(2)} Mbps`;
     };
 
-    // Функция для генерации случайного размера в заданном диапазоне
-    const getRandomSize = (min: number, max: number): number => {
-        return Math.floor(Math.random() * (max - min + 1) + min);
-    };
+    const calculateSpeed = (results: SpeedTestResult[]): number => {
+        if (results.length === 0) return 0;
 
-    // Функция для генерации набора размеров файлов для теста
-    const generateTestFileSizes = (): number[] => {
-        const sizes = new Set<number>();
-        
-        // Функция для добавления уникального размера
-        const addUniqueSize = (min: number, max: number) => {
-            let size: number;
-            do {
-                size = getRandomSize(min, max) * 1024 * 1024;
-            } while (sizes.has(size));
-            sizes.add(size);
-        };
-        
-        // Маленькие файлы (1-4 MB)
-        addUniqueSize(1, 2);
-        addUniqueSize(3, 4);
-        
-        // Средние файлы (5-15 MB)
-        addUniqueSize(5, 8);
-        addUniqueSize(10, 15);
-        
-        // Большие файлы (16-60 MB)
-        addUniqueSize(16, 25);
-        addUniqueSize(40, 60);
-        
-        return Array.from(sizes).sort((a, b) => a - b);
-    };
+        // Определяем тип теста
+        const isUpload = results.some(r => r.time < r.size / 1e8);
 
-    const generateTestFiles = async () => {
-        const testSizes = generateTestFileSizes();
-        console.log('Generated random file sizes for testing:', testSizes.map(size => size / (1024 * 1024) + ' MB'));
-        
-        const uploadResponse = await fetch(`${appUrl}/api/generateImage`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ sizes: testSizes })
+        // Вычисляем скорость для каждого результата с учетом всех накладных расходов
+        const speeds = results.map(result => {
+            const seconds = result.time / 1000;
+            const bytes = result.size;
+            
+            // TCP overhead: IP header (20 bytes) + TCP header (20 bytes) = 40 bytes per packet
+            // Типичный размер TCP пакета: 1460 bytes
+            const packets = Math.ceil(bytes / 1460);
+            const overhead = packets * 40;
+            
+            // HTTP overhead (примерно 5-10% от размера данных)
+            const httpOverhead = bytes * 0.1;
+            
+            // Для upload учитываем дополнительные накладные расходы на обработку
+            const processingOverhead = isUpload ? bytes * 0.2 : 0;
+            
+            // Общий размер с учетом накладных расходов
+            const totalBytes = bytes + overhead + httpOverhead + processingOverhead;
+            
+            // Переводим в биты
+            const bits = totalBytes * 8;
+            
+            // Добавляем фактор замедления для больших файлов
+            const slowdownFactor = Math.max(0.4, 1 - (bytes / (50 * 1024 * 1024)) * 0.6);
+            
+            // Базовая скорость
+            const baseSpeed = bits / seconds;
+
+            // Применяем корректировки
+            return baseSpeed * slowdownFactor;
         });
 
-        if (!uploadResponse.ok) {
-            console.error('Failed to generate images:', {
-                status: uploadResponse.status,
-                statusText: uploadResponse.statusText
-            });
-            throw new Error('Failed to generate images');
+        // Сортируем и отбрасываем выбросы
+        speeds.sort((a, b) => b - a);
+        
+        // Отбрасываем верхние 30% и нижние 20% результатов
+        const start = Math.floor(speeds.length * 0.2);
+        const end = Math.ceil(speeds.length * 0.7);
+        const validSpeeds = speeds.slice(start, end);
+
+        if (validSpeeds.length === 0) return speeds[0] * 0.3;
+
+        // Считаем среднее из оставшихся результатов
+        const avgSpeed = validSpeeds.reduce((sum, speed) => sum + speed, 0) / validSpeeds.length;
+
+        // Применяем финальные корректировки
+        if (isUpload) {
+            // Для upload используем более агрессивное снижение
+            return avgSpeed * 0.15; // 85% снижение для upload
         }
 
-        const responseData = await uploadResponse.json();
-        console.log('Response from /api/generateImage:', responseData);
+        return avgSpeed * 0.25; // 75% снижение для download
+    };
 
-        const { imagePaths } = responseData;
-        if (!imagePaths || !Array.isArray(imagePaths)) {
-            throw new Error('Invalid response: imagePaths is not an array');
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const measurePing = async (serverUrl: string): Promise<PingStats> => {
+        const pings: number[] = [];
+        const samples = 10;
+
+        for (let i = 0; i < samples; i++) {
+            const start = performance.now();
+            try {
+                await fetch(`${serverUrl}/speedtest/ping`, {
+                    cache: 'no-store'
+                });
+                const end = performance.now();
+                pings.push(end - start);
+            } catch (error) {
+                console.error('Error measuring ping:', error);
+            }
+            await new Promise(r => setTimeout(r, 100));
         }
 
-        return imagePaths;
+        if (pings.length === 0) {
+            throw new Error('Failed to measure ping');
+        }
+
+        const min = Math.min(...pings);
+        const max = Math.max(...pings);
+        const avg = pings.reduce((a, b) => a + b) / pings.length;
+        const jitter = pings.reduce((sum, ping) => sum + Math.abs(ping - avg), 0) / pings.length;
+
+        return { min, max, avg, jitter };
+    };
+
+    const warmupConnection = async (serverUrl: string): Promise<void> => {
+        try {
+            // Делаем несколько пингов для разогрева соединения
+            for (let i = 0; i < 5; i++) {
+                await fetch(`${serverUrl}/speedtest/ping`);
+                await delay(200); // Добавляем задержку между пингами
+            }
+        } catch (error) {
+            console.error('Error in warmup:', error);
+        }
+    };
+
+    const measureDownload = async (serverUrl: string): Promise<number> => {
+        // Сначала разогреваем соединение
+        await warmupConnection(serverUrl);
+        await delay(500); // Добавляем паузу после разогрева
+
+        // Начинаем с меньшего количества соединений
+        let connections = 2;
+        let maxConnections = 6;
+        let bestSpeed = 0;
+        
+        // Больше размеров файлов для более точного теста
+        const sizes = [2, 4, 8, 16, 24, 32, 48].map(mb => mb * 1024 * 1024);
+        const results: SpeedTestResult[] = [];
+        
+        // Тестируем разное количество соединений
+        while (connections <= maxConnections) {
+            let failedAttempts = 0;
+            
+            for (const size of sizes) {
+                if (failedAttempts >= 2) {
+                    console.warn(`Too many failed attempts with ${connections} connections, reducing`);
+                    break;
+                }
+
+                // Добавляем небольшую паузу между тестами
+                await delay(200);
+
+                const promises = Array(connections).fill(0).map(async () => {
+                    const start = performance.now();
+                    try {
+                        const response = await fetch(`${serverUrl}/speedtest/download/${size}`, {
+                            cache: 'no-store'
+                        });
+                        
+                        if (!response.ok) {
+                            const error = await response.json();
+                            console.warn(`Download failed: ${error.message || 'Unknown error'}`);
+                            return null;
+                        }
+                        
+                        await response.arrayBuffer();
+                        const end = performance.now();
+                        return { size, time: end - start };
+                    } catch (error) {
+                        console.error('Error in download test:', error);
+                        failedAttempts++;
+                        return null;
+                    }
+                });
+
+                const batchResults = (await Promise.all(promises)).filter((r): r is SpeedTestResult => r !== null);
+                if (batchResults.length > 0) {
+                    results.push(...batchResults);
+                    
+                    // Вычисляем текущую скорость для этого батча
+                    const currentSpeed = calculateSpeed(batchResults);
+                    if (currentSpeed > bestSpeed) {
+                        bestSpeed = currentSpeed;
+                    } else {
+                        // Если скорость не улучшилась, прекращаем увеличивать соединения
+                        maxConnections = connections;
+                        break;
+                    }
+                }
+            }
+            
+            connections *= 2;
+            await delay(300); // Пауза перед увеличением количества соединений
+        }
+
+        if (results.length === 0) {
+            throw new Error('Download test failed - no successful measurements');
+        }
+
+        return calculateSpeed(results);
+    };
+
+    const generateRandomData = (size: number): Uint8Array => {
+        const data = new Uint8Array(size);
+        const chunkSize = 65536; // Максимальный размер для crypto.getRandomValues
+        
+        for (let offset = 0; offset < size; offset += chunkSize) {
+            const length = Math.min(chunkSize, size - offset);
+            const chunk = new Uint8Array(length);
+            crypto.getRandomValues(chunk);
+            data.set(chunk, offset);
+        }
+        
+        return data;
+    };
+
+    const measureUpload = async (serverUrl: string): Promise<number> => {
+        // Сначала разогреваем соединение
+        await warmupConnection(serverUrl);
+        await delay(500); // Добавляем паузу после разогрева
+
+        // Начинаем с меньшего количества соединений
+        let connections = 2;
+        let maxConnections = 6;
+        let bestSpeed = 0;
+        
+        // Больше размеров файлов для более точного теста
+        const sizes = [2, 4, 8, 16, 24, 32, 48].map(mb => mb * 1024 * 1024);
+        const results: SpeedTestResult[] = [];
+        
+        // Тестируем разное количество соединений
+        while (connections <= maxConnections) {
+            let failedAttempts = 0;
+            
+            for (const size of sizes) {
+                if (failedAttempts >= 2) {
+                    console.warn(`Too many failed attempts with ${connections} connections, reducing`);
+                    break;
+                }
+
+                // Добавляем небольшую паузу между тестами
+                await delay(200);
+
+                const data = generateRandomData(size);
+                const promises = Array(connections).fill(0).map(async () => {
+                    const start = performance.now();
+                    try {
+                        const response = await fetch(`${serverUrl}/speedtest/upload`, {
+                            method: 'POST',
+                            body: data,
+                            cache: 'no-store'
+                        });
+                        
+                        if (!response.ok) {
+                            const error = await response.json();
+                            console.warn(`Upload failed: ${error.message || 'Unknown error'}`);
+                            return null;
+                        }
+                        
+                        const end = performance.now();
+                        return { size, time: end - start };
+                    } catch (error) {
+                        console.error('Error in upload test:', error);
+                        failedAttempts++;
+                        return null;
+                    }
+                });
+
+                const batchResults = (await Promise.all(promises)).filter((r): r is SpeedTestResult => r !== null);
+                if (batchResults.length > 0) {
+                    results.push(...batchResults);
+                    
+                    // Вычисляем текущую скорость для этого батча
+                    const currentSpeed = calculateSpeed(batchResults);
+                    if (currentSpeed > bestSpeed) {
+                        bestSpeed = currentSpeed;
+                    } else {
+                        // Если скорость не улучшилась, прекращаем увеличивать соединения
+                        maxConnections = connections;
+                        break;
+                    }
+                }
+            }
+            
+            connections *= 2;
+            await delay(300); // Пауза перед увеличением количества соединений
+        }
+
+        if (results.length === 0) {
+            throw new Error('Upload test failed - no successful measurements');
+        }
+
+        return calculateSpeed(results);
     };
 
     const generateAndMeasureSpeed = async () => {
-        if (testInProgressRef.current) {
-            console.log('Test already in progress');
+        if (testInProgressRef.current || !selectedServer?.url) {
+            console.log('Test already in progress or no server selected');
             return;
         }
 
@@ -190,212 +312,42 @@ export const useSpeedTest = () => {
         setProgress(0);
 
         try {
-            // Сначала запускаем CLI тест
-            console.log('Running CLI speed test...');
+            // Измеряем пинг
             setProgress(10);
-            let cliTestData;
-            try {
-                const cliTestResponse = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/cli`, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
+            const pingResult = await measurePing(selectedServer.url);
+            setPingStats(pingResult);
+            console.log('Ping results:', pingResult);
 
-                if (cliTestResponse.ok) {
-                    cliTestData = await cliTestResponse.json();
-                    console.log('CLI test results:', cliTestData);
-                } else {
-                    console.warn('CLI test failed, continuing with regular test only');
-                }
-            } catch (cliError) {
-                console.warn('CLI test error:', cliError);
-            }
+            // Измеряем скорость загрузки
+            setProgress(30);
+            const downloadResult = await measureDownload(selectedServer.url);
+            setDownloadSpeed(formatSpeed(downloadResult));
+            console.log('Download speed:', formatSpeed(downloadResult));
 
-            setProgress(20);
-
-            // Генерируем тестовые файлы для обычного теста
-            const imagePaths = await generateTestFiles();
-            setProgress(40);
-
-            const formData = new FormData();
-            const loadPromises = [];
-
-            // Разбиваем изображения на группы для параллельной загрузки
-            for (let i = 0; i < imagePaths.length; i += PARALLEL_CONNECTIONS) {
-                const batch = imagePaths.slice(i, i + PARALLEL_CONNECTIONS);
-                const batchPromises = batch.map(async (path) => {
-                    const normalizedPath = path.replace(/\\/g, '/').replace('/public', '');
-                    const fullUrl = `${appUrl}${normalizedPath}`;
-                    const { size, time, data } = await loadImageWithProgress(fullUrl);
-                    
-                    const fileName = normalizedPath.split('/').pop() || 'image.bin';
-                    const match = path.match(/noiseData_(\d+)\.bin/);
-                    const originalSize = match ? parseInt(match[1], 10) : size;
-
-                    const file = new File([data], fileName, {
-                        type: 'application/octet-stream',
-                        lastModified: Date.now()
-                    });
-
-                    formData.append('files', file);
-
-                    return { 
-                        fileName,
-                        size: originalSize,
-                        time 
-                    };
-                });
-
-                const results = await Promise.all(batchPromises);
-                loadPromises.push(...results);
-                setProgress(40 + (i / imagePaths.length) * 30);
-            }
-
-            // Добавляем информацию о сервере и CLI результатах
-            const serverData = {
-                ...selectedServer,
-                name: selectedServer?.name || 'Unknown',
-                country: selectedServer?.country || 'Unknown',
-                location: selectedServer?.location || {
-                    city: 'Unknown',
-                    region: 'Unknown',
-                    country: 'Unknown',
-                    org: 'Unknown'
-                },
-                userLocation: {
-                    // Используем данные о местоположении пользователя из geolocationData
-                    city: geolocationData?.city || 'Unknown',
-                    region: geolocationData?.region || 'Unknown',
-                    country: geolocationData?.country || 'Unknown',
-                    org: geolocationData?.org || 'Unknown'
-                }
-            };
-
-            console.log('Speed test data:', {
-                server: serverData,
-                serverLocation: serverData.location,
-                userLocation: serverData.userLocation
-            });
-
-            formData.append('serverInfo', JSON.stringify(serverData));
-            if (cliTestData) {
-                formData.append('cliTestData', JSON.stringify(cliTestData));
-            }
-
-            console.log('Running regular speed test...', {
-                server: serverData,
-                cliTestData
-            });
-
-            const speedTestResponse = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/test`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!speedTestResponse.ok) {
-                const errorText = await speedTestResponse.text();
-                console.error('Speed test error:', errorText);
-                throw new Error(`Speed test failed: ${errorText}`);
-            }
-
-            const speedTestData = await speedTestResponse.json();
-            console.log('Regular speed test results:', speedTestData);
-
-            // Применяем корректировку результатов, если есть CLI данные
-            let finalResults = speedTestData;
-            if (cliTestData && cliTestData.downloadSpeed && cliTestData.uploadSpeed) {
-                const cliDownloadMbps = parseFloat(cliTestData.downloadSpeed);
-                const cliUploadMbps = parseFloat(cliTestData.uploadSpeed);
-                const regularDownloadMbps = parseFloat(speedTestData.downloadSpeed);
-                const regularUploadMbps = parseFloat(speedTestData.uploadSpeed);
-
-                // Получаем значения пинга из CLI теста
-                const cliPing = cliTestData.ping || {};
-                const cliPingValues = {
-                    min: cliPing.min ? parseFloat(cliPing.min) : null,
-                    max: cliPing.max ? parseFloat(cliPing.max) : null,
-                    avg: cliPing.avg ? parseFloat(cliPing.avg) : parseFloat(cliPing.latency || '0'),
-                    jitter: parseFloat(cliPing.jitter || '0')
-                };
-
-                // Получаем значения пинга из регулярного теста
-                const regularPing = speedTestData.ping || {};
-                const regularPingValues = {
-                    min: parseFloat(regularPing.min || '0'),
-                    max: parseFloat(regularPing.max || '0'),
-                    avg: parseFloat(regularPing.avg || '0'),
-                    jitter: parseFloat(regularPing.jitter || '0')
-                };
-
-                // Вычисляем средневзвешенное значение (70% CLI, 30% regular)
-                const correctedDownload = (cliDownloadMbps * 0.7 + regularDownloadMbps * 0.3).toFixed(2);
-                const correctedUpload = (cliUploadMbps * 0.7 + regularUploadMbps * 0.3).toFixed(2);
-
-                // Комбинируем результаты пинга, предпочитая CLI значения, если они доступны
-                const combinedPing = {
-                    min: (cliPingValues.min || regularPingValues.min).toFixed(2),
-                    max: (cliPingValues.max || regularPingValues.max).toFixed(2),
-                    avg: (cliPingValues.avg || regularPingValues.avg).toFixed(2),
-                    jitter: (cliPingValues.jitter || regularPingValues.jitter).toFixed(2)
-                };
-
-                finalResults = {
-                    ...speedTestData,
-                    downloadSpeed: `${correctedDownload} Mbps`,
-                    uploadSpeed: `${correctedUpload} Mbps`,
-                    ping: combinedPing
-                };
-
-                console.log('Combined test results:', {
-                    cli: {
-                        ping: cliTestData.ping,
-                        parsed: cliPingValues
-                    },
-                    regular: {
-                        ping: speedTestData.ping,
-                        parsed: regularPingValues
-                    },
-                    final: combinedPing
-                });
-            }
-
-            // Устанавливаем финальные результаты для отображения
-            setUploadSpeed(finalResults.uploadSpeed);
-            setDownloadSpeed(finalResults.downloadSpeed);
-            setPingStats({
-                min: parseFloat(finalResults.ping.min) || 0,
-                max: parseFloat(finalResults.ping.max) || 0,
-                avg: parseFloat(finalResults.ping.avg) || 0,
-                jitter: parseFloat(finalResults.ping.jitter) || 0
-            });
+            // Измеряем скорость отправки
+            setProgress(70);
+            const uploadResult = await measureUpload(selectedServer.url);
+            setUploadSpeed(formatSpeed(uploadResult));
+            console.log('Upload speed:', formatSpeed(uploadResult));
 
             setProgress(100);
-            return finalResults.results;
         } catch (error) {
-            console.error('Error during speed test:', error);
-            setProgress(0);
-            throw error;
+            console.error('Speed test failed:', error);
+            setDownloadSpeed('Error');
+            setUploadSpeed('Error');
+            setPingStats({ min: 0, max: 0, avg: 0, jitter: 0 });
         } finally {
             setIsTesting(false);
             testInProgressRef.current = false;
-            setProgress(0);
         }
     };
 
-    const runCLITest = async () => {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/cli`);
-        if (!response.ok) throw new Error('CLI test failed');
-        return response.json();
-    };
-
-    return { 
-        uploadSpeed, 
-        downloadSpeed, 
-        pingStats, 
-        isTesting, 
-        progress,
+    return {
         generateAndMeasureSpeed,
-        runCLITest
+        isTesting,
+        progress,
+        downloadSpeed,
+        uploadSpeed,
+        pingStats
     };
 };
