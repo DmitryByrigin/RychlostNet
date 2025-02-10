@@ -136,7 +136,14 @@ export const useSpeedTest = () => {
 
     const measureDownload = async (serverUrl: string): Promise<number> => {
         // Быстрый разогрев
-        await fetch(`${serverUrl}/speedtest/download/1048576`, { cache: 'no-store' });
+        try {
+            await fetch(`${serverUrl}/speedtest/ping`, {
+                credentials: 'include',
+                mode: 'cors'
+            });
+        } catch (error) {
+            console.warn('Warmup failed:', error);
+        }
 
         let connections = 2;
         let maxConnections = 8;
@@ -156,15 +163,11 @@ export const useSpeedTest = () => {
                     const start = performance.now();
                     try {
                         const response = await fetch(`${serverUrl}/speedtest/download/${size}`, {
-                            cache: 'no-store',
-                            headers: {
-                                'Connection': 'keep-alive',
-                                'Accept-Encoding': 'gzip, deflate',
-                                'Cache-Control': 'no-cache',
-                                'Pragma': 'no-cache'
-                            },
+                            credentials: 'include',
                             mode: 'cors',
-                            credentials: 'omit'
+                            headers: {
+                                'Accept': '*/*'
+                            }
                         });
                         
                         if (!response.ok) return null;
