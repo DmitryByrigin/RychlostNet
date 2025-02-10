@@ -225,15 +225,15 @@ export const useSpeedTest = () => {
     const measureUpload = async (serverUrl: string): Promise<number> => {
         // Сначала разогреваем соединение
         await warmupConnection(serverUrl);
-        await delay(500); // Добавляем паузу после разогрева
+        await delay(500);
 
         // Начинаем с меньшего количества соединений
         let connections = 2;
         let maxConnections = 6;
         let bestSpeed = 0;
         
-        // Больше размеров файлов для более точного теста
-        const sizes = [2, 4, 8, 16, 24, 32, 48].map(mb => mb * 1024 * 1024);
+        // Уменьшаем размеры файлов для уменьшения нагрузки
+        const sizes = [1, 2, 4, 8, 16].map(mb => mb * 1024 * 1024);
         const results: SpeedTestResult[] = [];
         
         // Тестируем разное количество соединений
@@ -246,7 +246,6 @@ export const useSpeedTest = () => {
                     break;
                 }
 
-                // Добавляем небольшую паузу между тестами
                 await delay(200);
 
                 const data = generateRandomData(size);
@@ -256,19 +255,33 @@ export const useSpeedTest = () => {
                         const response = await fetch(`${serverUrl}/speedtest/upload`, {
                             method: 'POST',
                             body: data,
-                            cache: 'no-store'
+                            headers: {
+                                'Content-Type': 'application/octet-stream',
+                            },
+                            mode: 'cors',
+                            credentials: 'same-origin'
                         });
                         
+                        // Проверяем конкретные коды ошибок
+                        if (response.status === 520) {
+                            console.warn('Server error 520 - возможно слишком большой размер файла');
+                            return null;
+                        }
+                        
                         if (!response.ok) {
-                            const error = await response.json();
-                            console.warn(`Upload failed: ${error.message || 'Unknown error'}`);
+                            const errorText = await response.text().catch(() => 'Unknown error');
+                            console.warn(`Upload failed: ${response.status} - ${errorText}`);
                             return null;
                         }
                         
                         const end = performance.now();
                         return { size, time: end - start };
                     } catch (error) {
-                        console.error('Error in upload test:', error);
+                        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                            console.warn('Network error - возможно проблема с CORS или сервер недоступен');
+                        } else {
+                            console.error('Error in upload test:', error);
+                        }
                         failedAttempts++;
                         return null;
                     }
@@ -278,27 +291,31 @@ export const useSpeedTest = () => {
                 if (batchResults.length > 0) {
                     results.push(...batchResults);
                     
-                    // Вычисляем текущую скорость для этого батча
                     const currentSpeed = calculateSpeed(batchResults);
                     if (currentSpeed > bestSpeed) {
                         bestSpeed = currentSpeed;
                     } else {
-                        // Если скорость не улучшилась, прекращаем увеличивать соединения
                         maxConnections = connections;
                         break;
                     }
                 }
+                
+                // Если были успешные результаты, сбрасываем счетчик ошибок
+                if (batchResults.length > 0) {
+                    failedAttempts = 0;
+                }
             }
             
             connections *= 2;
-            await delay(300); // Пауза перед увеличением количества соединений
+            await delay(300);
         }
 
-        if (results.length === 0) {
-            throw new Error('Upload test failed - no successful measurements');
+        // Если есть хоть какие-то результаты, используем их
+        if (results.length > 0) {
+            return calculateSpeed(results);
         }
 
-        return calculateSpeed(results);
+        throw new Error('Upload test failed - no successful measurements. Check server CORS settings and file size limits.');
     };
 
     const generateAndMeasureSpeed = async () => {
