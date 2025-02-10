@@ -33,7 +33,7 @@ export const useSpeedTest = () => {
         // Определяем тип теста
         const isUpload = results.some(r => r.time < r.size / 1e8);
 
-        // Вычисляем скорость для каждого результата с учетом всех накладных расходов
+        // Вычисляем скорость для каждого результата
         const speeds = results.map(result => {
             const seconds = result.time / 1000;
             const bytes = result.size;
@@ -43,11 +43,11 @@ export const useSpeedTest = () => {
             const packets = Math.ceil(bytes / 1460);
             const overhead = packets * 40;
             
-            // HTTP overhead (примерно 5-10% от размера данных)
-            const httpOverhead = bytes * 0.1;
+            // HTTP overhead (примерно 2-5% от размера данных)
+            const httpOverhead = bytes * 0.03;
             
             // Для upload учитываем дополнительные накладные расходы на обработку
-            const processingOverhead = isUpload ? bytes * 0.2 : 0;
+            const processingOverhead = isUpload ? bytes * 0.05 : 0;
             
             // Общий размер с учетом накладных расходов
             const totalBytes = bytes + overhead + httpOverhead + processingOverhead;
@@ -55,8 +55,8 @@ export const useSpeedTest = () => {
             // Переводим в биты
             const bits = totalBytes * 8;
             
-            // Добавляем фактор замедления для больших файлов
-            const slowdownFactor = Math.max(0.4, 1 - (bytes / (50 * 1024 * 1024)) * 0.6);
+            // Добавляем фактор замедления для больших файлов (менее агрессивный)
+            const slowdownFactor = Math.max(0.7, 1 - (bytes / (100 * 1024 * 1024)) * 0.3);
             
             // Базовая скорость
             const baseSpeed = bits / seconds;
@@ -68,55 +68,86 @@ export const useSpeedTest = () => {
         // Сортируем и отбрасываем выбросы
         speeds.sort((a, b) => b - a);
         
-        // Отбрасываем верхние 30% и нижние 20% результатов
-        const start = Math.floor(speeds.length * 0.2);
-        const end = Math.ceil(speeds.length * 0.7);
+        // Отбрасываем верхние 20% и нижние 10% результатов
+        const start = Math.floor(speeds.length * 0.1);
+        const end = Math.ceil(speeds.length * 0.8);
         const validSpeeds = speeds.slice(start, end);
 
-        if (validSpeeds.length === 0) return speeds[0] * 0.3;
+        if (validSpeeds.length === 0) return speeds[0] * 0.7;
 
         // Считаем среднее из оставшихся результатов
         const avgSpeed = validSpeeds.reduce((sum, speed) => sum + speed, 0) / validSpeeds.length;
 
         // Применяем финальные корректировки
         if (isUpload) {
-            // Для upload используем более агрессивное снижение
-            return avgSpeed * 0.15; // 85% снижение для upload
+            // Для upload используем менее агрессивное снижение
+            return avgSpeed * 0.8; // 20% снижение для upload
         }
 
-        return avgSpeed * 0.25; // 75% снижение для download
+        return avgSpeed * 0.85; // 15% снижение для download
     };
 
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const measurePing = async (serverUrl: string): Promise<PingStats> => {
         const pings: number[] = [];
-        const samples = 10;
-
-        for (let i = 0; i < samples; i++) {
-            const start = performance.now();
+        const samples = 15; // Увеличиваем количество замеров
+        
+        // Делаем пару пингов для разогрева соединения
+        for (let i = 0; i < 2; i++) {
             try {
-                await fetch(`${serverUrl}/speedtest/ping`, {
-                    cache: 'no-store'
-                });
+                const start = performance.now();
+                await fetch(`${serverUrl}/speedtest/ping`);
+                const end = performance.now();
+                await delay(50); // Небольшая пауза между разогревочными пингами
+            } catch (error) {
+                console.warn('Warmup ping failed:', error);
+            }
+        }
+
+        // Основные замеры
+        for (let i = 0; i < samples; i++) {
+            try {
+                const start = performance.now();
+                const response = await fetch(`${serverUrl}/speedtest/ping`);
+                if (!response.ok) {
+                    console.warn(`Ping failed with status: ${response.status}`);
+                    continue;
+                }
                 const end = performance.now();
                 pings.push(end - start);
+                await delay(100); // Добавляем паузу между пингами
             } catch (error) {
-                console.error('Error measuring ping:', error);
+                console.warn('Ping measurement failed:', error);
             }
-            await new Promise(r => setTimeout(r, 100));
         }
 
         if (pings.length === 0) {
-            throw new Error('Failed to measure ping');
+            throw new Error('Ping test failed - no successful measurements');
         }
 
-        const min = Math.min(...pings);
-        const max = Math.max(...pings);
-        const avg = pings.reduce((a, b) => a + b) / pings.length;
-        const jitter = pings.reduce((sum, ping) => sum + Math.abs(ping - avg), 0) / pings.length;
+        // Сортируем пинги
+        pings.sort((a, b) => a - b);
 
-        return { min, max, avg, jitter };
+        // Отбрасываем верхние и нижние 20% для исключения выбросов
+        const startIndex = Math.floor(pings.length * 0.2);
+        const endIndex = Math.ceil(pings.length * 0.8);
+        const validPings = pings.slice(startIndex, endIndex);
+
+        // Вычисляем статистику
+        const min = Math.min(...validPings);
+        const max = Math.max(...validPings);
+        const avg = validPings.reduce((sum, ping) => sum + ping, 0) / validPings.length;
+
+        // Вычисляем джиттер как среднее отклонение от среднего значения
+        const jitter = validPings.reduce((sum, ping) => sum + Math.abs(ping - avg), 0) / validPings.length;
+
+        return {
+            min,
+            max,
+            avg,
+            jitter
+        };
     };
 
     const warmupConnection = async (serverUrl: string): Promise<void> => {
@@ -134,15 +165,15 @@ export const useSpeedTest = () => {
     const measureDownload = async (serverUrl: string): Promise<number> => {
         // Сначала разогреваем соединение
         await warmupConnection(serverUrl);
-        await delay(500); // Добавляем паузу после разогрева
+        await delay(500);
 
         // Начинаем с меньшего количества соединений
         let connections = 2;
-        let maxConnections = 6;
+        let maxConnections = 8; // Увеличили максимум соединений
         let bestSpeed = 0;
         
-        // Больше размеров файлов для более точного теста
-        const sizes = [2, 4, 8, 16, 24, 32, 48].map(mb => mb * 1024 * 1024);
+        // Оптимизированные размеры файлов
+        const sizes = [2, 4, 8, 16, 24].map(mb => mb * 1024 * 1024);
         const results: SpeedTestResult[] = [];
         
         // Тестируем разное количество соединений
@@ -155,8 +186,7 @@ export const useSpeedTest = () => {
                     break;
                 }
 
-                // Добавляем небольшую паузу между тестами
-                await delay(200);
+                await delay(100); // Уменьшили задержку
 
                 const promises = Array(connections).fill(0).map(async () => {
                     const start = performance.now();
@@ -166,8 +196,7 @@ export const useSpeedTest = () => {
                         });
                         
                         if (!response.ok) {
-                            const error = await response.json();
-                            console.warn(`Download failed: ${error.message || 'Unknown error'}`);
+                            console.warn(`Download failed: ${response.status}`);
                             return null;
                         }
                         
@@ -185,12 +214,14 @@ export const useSpeedTest = () => {
                 if (batchResults.length > 0) {
                     results.push(...batchResults);
                     
-                    // Вычисляем текущую скорость для этого батча
                     const currentSpeed = calculateSpeed(batchResults);
                     if (currentSpeed > bestSpeed) {
                         bestSpeed = currentSpeed;
                     } else {
-                        // Если скорость не улучшилась, прекращаем увеличивать соединения
+                        // Даем еще один шанс перед остановкой
+                        if (connections < maxConnections) {
+                            continue;
+                        }
                         maxConnections = connections;
                         break;
                     }
@@ -198,7 +229,7 @@ export const useSpeedTest = () => {
             }
             
             connections *= 2;
-            await delay(300); // Пауза перед увеличением количества соединений
+            await delay(200); // Уменьшили задержку
         }
 
         if (results.length === 0) {
@@ -229,11 +260,11 @@ export const useSpeedTest = () => {
 
         // Начинаем с меньшего количества соединений
         let connections = 2;
-        let maxConnections = 6;
+        let maxConnections = 8; // Увеличили максимум соединений
         let bestSpeed = 0;
         
-        // Уменьшаем размеры файлов для уменьшения нагрузки
-        const sizes = [1, 2, 4, 8, 16].map(mb => mb * 1024 * 1024);
+        // Оптимизированные размеры файлов
+        const sizes = [2, 4, 8, 16, 24].map(mb => mb * 1024 * 1024);
         const results: SpeedTestResult[] = [];
         
         // Тестируем разное количество соединений
@@ -246,7 +277,7 @@ export const useSpeedTest = () => {
                     break;
                 }
 
-                await delay(200);
+                await delay(100); // Уменьшили задержку
 
                 const data = generateRandomData(size);
                 const promises = Array(connections).fill(0).map(async () => {
@@ -269,8 +300,7 @@ export const useSpeedTest = () => {
                         }
                         
                         if (!response.ok) {
-                            const errorText = await response.text().catch(() => 'Unknown error');
-                            console.warn(`Upload failed: ${response.status} - ${errorText}`);
+                            console.warn(`Upload failed: ${response.status}`);
                             return null;
                         }
                         
@@ -279,8 +309,6 @@ export const useSpeedTest = () => {
                     } catch (error) {
                         if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
                             console.warn('Network error - возможно проблема с CORS или сервер недоступен');
-                        } else {
-                            console.error('Error in upload test:', error);
                         }
                         failedAttempts++;
                         return null;
@@ -295,6 +323,10 @@ export const useSpeedTest = () => {
                     if (currentSpeed > bestSpeed) {
                         bestSpeed = currentSpeed;
                     } else {
+                        // Даем еще один шанс перед остановкой
+                        if (connections < maxConnections) {
+                            continue;
+                        }
                         maxConnections = connections;
                         break;
                     }
@@ -307,7 +339,7 @@ export const useSpeedTest = () => {
             }
             
             connections *= 2;
-            await delay(300);
+            await delay(200); // Уменьшили задержку
         }
 
         // Если есть хоть какие-то результаты, используем их
