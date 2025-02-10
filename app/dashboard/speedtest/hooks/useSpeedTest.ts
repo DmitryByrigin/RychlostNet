@@ -77,22 +77,15 @@ export const useSpeedTest = () => {
         return avgSpeed * 0.9; // 10% снижение для download
     };
 
-    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
     const measurePing = async (serverUrl: string): Promise<PingStats> => {
         const pings: number[] = [];
-        const samples = 20; // Больше замеров
+        const samples = 10; // Уменьшаем количество замеров
         
-        // Делаем пару пингов для разогрева соединения
-        for (let i = 0; i < 3; i++) {
-            try {
-                const start = performance.now();
-                await fetch(`${serverUrl}/speedtest/ping`);
-                const end = performance.now();
-                await delay(20); // Уменьшаем паузу
-            } catch (error) {
-                console.warn('Warmup ping failed:', error);
-            }
+        // Один пинг для разогрева
+        try {
+            await fetch(`${serverUrl}/speedtest/ping`);
+        } catch (error) {
+            console.warn('Warmup ping failed:', error);
         }
 
         // Основные замеры
@@ -100,13 +93,9 @@ export const useSpeedTest = () => {
             try {
                 const start = performance.now();
                 const response = await fetch(`${serverUrl}/speedtest/ping`);
-                if (!response.ok) {
-                    console.warn(`Ping failed with status: ${response.status}`);
-                    continue;
-                }
+                if (!response.ok) continue;
                 const end = performance.now();
                 pings.push(end - start);
-                await delay(50); // Уменьшаем паузу между пингами
             } catch (error) {
                 console.warn('Ping measurement failed:', error);
             }
@@ -116,18 +105,13 @@ export const useSpeedTest = () => {
             throw new Error('Ping test failed - no successful measurements');
         }
 
-        // Сортируем пинги
+        // Сортируем пинги и берем лучшие 80%
         pings.sort((a, b) => a - b);
+        const validPings = pings.slice(0, Math.ceil(pings.length * 0.8));
 
-        // Отбрасываем только явные выбросы (верхние 10%)
-        const validPings = pings.slice(0, Math.ceil(pings.length * 0.9));
-
-        // Вычисляем статистику
-        const min = validPings[0]; // Минимальный пинг
-        const max = validPings[validPings.length - 1]; // Максимальный пинг
+        const min = validPings[0];
+        const max = validPings[validPings.length - 1];
         const avg = validPings.reduce((sum, ping) => sum + ping, 0) / validPings.length;
-
-        // Вычисляем джиттер как стандартное отклонение
         const variance = validPings.reduce((sum, ping) => sum + Math.pow(ping - avg, 2), 0) / validPings.length;
         const jitter = Math.sqrt(variance);
 
@@ -144,7 +128,6 @@ export const useSpeedTest = () => {
             // Делаем несколько пингов для разогрева соединения
             for (let i = 0; i < 5; i++) {
                 await fetch(`${serverUrl}/speedtest/ping`);
-                await delay(200); // Добавляем задержку между пингами
             }
         } catch (error) {
             console.error('Error in warmup:', error);
@@ -152,48 +135,53 @@ export const useSpeedTest = () => {
     };
 
     const measureDownload = async (serverUrl: string): Promise<number> => {
-        // Сначала разогреваем соединение
-        await warmupConnection(serverUrl);
-        await delay(200); // Уменьшаем задержку
+        // Быстрый разогрев
+        await fetch(`${serverUrl}/speedtest/download/1048576`, { cache: 'no-store' });
 
-        // Начинаем с меньшего количества соединений
         let connections = 2;
-        let maxConnections = 12; // Увеличиваем максимум соединений
+        let maxConnections = 8;
         let bestSpeed = 0;
         
-        // Оптимизированные размеры файлов
-        const sizes = [4, 8, 16, 32].map(mb => mb * 1024 * 1024);
+        // Меньше размеров файлов
+        const sizes = [1, 4].map(mb => mb * 1024 * 1024);
         const results: SpeedTestResult[] = [];
         
-        // Тестируем разное количество соединений
         while (connections <= maxConnections) {
             let failedAttempts = 0;
             
             for (const size of sizes) {
-                if (failedAttempts >= 2) {
-                    console.warn(`Too many failed attempts with ${connections} connections, reducing`);
-                    break;
-                }
-
-                await delay(50); // Уменьшаем задержку
+                if (failedAttempts >= 2) break;
 
                 const promises = Array(connections).fill(0).map(async () => {
                     const start = performance.now();
                     try {
                         const response = await fetch(`${serverUrl}/speedtest/download/${size}`, {
-                            cache: 'no-store'
+                            cache: 'no-store',
+                            headers: {
+                                'Connection': 'keep-alive',
+                                'Accept-Encoding': 'gzip, deflate',
+                                'Cache-Control': 'no-cache',
+                                'Pragma': 'no-cache'
+                            },
+                            mode: 'cors',
+                            credentials: 'omit'
                         });
                         
-                        if (!response.ok) {
-                            console.warn(`Download failed: ${response.status}`);
-                            return null;
-                        }
+                        if (!response.ok) return null;
                         
-                        await response.arrayBuffer();
+                        const reader = response.body?.getReader();
+                        if (!reader) return null;
+
+                        let receivedSize = 0;
+                        while(true) {
+                            const {done, value} = await reader.read();
+                            if (done) break;
+                            receivedSize += value.length;
+                        }
+
                         const end = performance.now();
-                        return { size, time: end - start };
+                        return { size: receivedSize, time: end - start };
                     } catch (error) {
-                        console.error('Error in download test:', error);
                         failedAttempts++;
                         return null;
                     }
@@ -204,21 +192,16 @@ export const useSpeedTest = () => {
                     results.push(...batchResults);
                     
                     const currentSpeed = calculateSpeed(batchResults);
-                    if (currentSpeed > bestSpeed * 1.1) { // Увеличиваем только если прирост больше 10%
+                    if (currentSpeed > bestSpeed) {
                         bestSpeed = currentSpeed;
-                    } else {
-                        // Даем еще два шанса перед остановкой
-                        if (connections < maxConnections) {
-                            continue;
-                        }
-                        maxConnections = connections;
-                        break;
+                        continue;
                     }
+                    maxConnections = connections;
+                    break;
                 }
             }
             
             connections *= 2;
-            await delay(100); // Уменьшаем задержку
         }
 
         if (results.length === 0) {
@@ -245,7 +228,6 @@ export const useSpeedTest = () => {
     const measureUpload = async (serverUrl: string): Promise<number> => {
         // Сначала разогреваем соединение
         await warmupConnection(serverUrl);
-        await delay(500);
 
         // Начинаем с меньшего количества соединений
         let connections = 2;
@@ -265,8 +247,6 @@ export const useSpeedTest = () => {
                     console.warn(`Too many failed attempts with ${connections} connections, reducing`);
                     break;
                 }
-
-                await delay(100); // Уменьшили задержку
 
                 const data = generateRandomData(size);
                 const promises = Array(connections).fill(0).map(async () => {
@@ -328,7 +308,6 @@ export const useSpeedTest = () => {
             }
             
             connections *= 2;
-            await delay(200); // Уменьшили задержку
         }
 
         // Если есть хоть какие-то результаты, используем их
