@@ -96,7 +96,7 @@ export const useSpeedTest = () => {
             try {
                 const start = performance.now();
                 const response = await fetch(`${serverUrl}/speedtest/ping`, {
-                    method: 'HEAD',
+                    method: 'GET',
                     headers: {
                         'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
                         'Pragma': 'no-cache',
@@ -105,14 +105,22 @@ export const useSpeedTest = () => {
                     },
                     cache: 'no-store',
                     signal: controller.signal,
-                    keepalive: true
+                    keepalive: true,
+                    // Отключаем QUIC
+                    mode: 'cors',
+                    credentials: 'omit',
+                    redirect: 'follow'
                 });
 
-                if (!response.ok) return null;
+                if (!response.ok) {
+                    console.warn(`Ping failed with status: ${response.status}`);
+                    return null;
+                }
 
                 const end = performance.now();
                 return Math.max(0.1, end - start); // Минимальный пинг 0.1мс
             } catch (error) {
+                console.warn(`Ping error: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 return null;
             } finally {
                 clearTimeout(timeoutId);
