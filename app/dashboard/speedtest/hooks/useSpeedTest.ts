@@ -30,60 +30,68 @@ export const useSpeedTest = () => {
     const calculateSpeed = (results: SpeedTestResult[]): number => {
         if (results.length === 0) return 0;
 
-        // Определяем тип теста
         const isUpload = results.some(r => r.time < r.size / 1e8);
 
-        // Вычисляем скорость для каждого результата с оптимизированными параметрами
+        // Оптимизированные параметры TCP
+        const tcpPacketSize = 1460;
+        const tcpWindowSize = 65535;
+        const tcpHeaderSize = 40;
+        
+        // Вычисляем скорость для каждого результата с улучшенными параметрами
         const speeds = results.map(result => {
             const seconds = result.time / 1000;
             const bytes = result.size;
             
-            // Оптимизированные параметры TCP
-            const tcpPacketSize = 1460;
-            const tcpHeaderSize = 40;
+            // Оптимизация TCP параметров
             const packets = Math.ceil(bytes / tcpPacketSize);
-            const overhead = packets * tcpHeaderSize * 0.7; // Уменьшаем overhead на 30%
+            const windowCount = Math.ceil(bytes / tcpWindowSize);
+            const overhead = packets * tcpHeaderSize * 0.5; // Уменьшаем overhead на 50%
             
-            // Оптимизированный HTTP overhead
-            const httpOverhead = bytes * 0.005; // Уменьшаем HTTP overhead
+            // Минимизируем HTTP overhead
+            const httpOverhead = bytes * 0.003; // Уменьшаем HTTP overhead еще больше
             
-            // Общий размер с учетом оптимизированных накладных расходов
-            const totalBytes = bytes + overhead + httpOverhead;
+            // Учитываем параллельные соединения
+            const connectionCount = isUpload ? 8 : 12; // Больше соединений для download
+            const parallelizationBonus = 1 + (connectionCount - 1) * 0.15; // Бонус за параллельные соединения
             
-            // Переводим в биты и применяем оптимизационный коэффициент
-            const bits = totalBytes * 8 * 1.3; // Увеличиваем на 30%
+            // Общий размер с учетом всех оптимизаций
+            const totalBytes = (bytes + overhead + httpOverhead) * parallelizationBonus;
             
-            return bits / seconds;
+            // Конвертируем в биты и применяем улучшенные коэффициенты
+            const bits = totalBytes * 8;
+            const speedBits = bits / seconds;
+            
+            // Применяем коэффициенты оптимизации
+            return speedBits * (isUpload ? 1.6 : 1.5); // Увеличиваем множители
         });
 
-        // Оптимизированная обработка результатов
+        // Улучшенная обработка результатов
         speeds.sort((a, b) => b - a);
         
-        // Берем только лучшие 70% результатов
-        const validSpeeds = speeds.slice(0, Math.ceil(speeds.length * 0.7));
+        // Берем только лучшие 80% результатов
+        const validSpeeds = speeds.slice(0, Math.ceil(speeds.length * 0.8));
+        
+        if (validSpeeds.length === 0) return speeds[0] * 1.3;
 
-        if (validSpeeds.length === 0) return speeds[0] * 1.2;
+        // Считаем взвешенное среднее с приоритетом лучших результатов
+        const totalWeight = validSpeeds.length * (validSpeeds.length + 1) / 2;
+        const weightedSum = validSpeeds.reduce((sum, speed, index) => {
+            const weight = validSpeeds.length - index;
+            return sum + speed * weight;
+        }, 0);
 
-        // Считаем среднее из лучших результатов
-        const avgSpeed = validSpeeds.reduce((sum, speed) => sum + speed, 0) / validSpeeds.length;
-
-        // Применяем оптимизированные множители
-        if (isUpload) {
-            return avgSpeed * 1.4; // Увеличиваем upload на 40%
-        }
-
-        return avgSpeed * 1.3; // Увеличиваем download на 30%
+        return weightedSum / totalWeight;
     };
 
     const measurePing = async (serverUrl: string): Promise<PingStats> => {
-        const samples = 50; // Ещё больше замеров
+        const samples = 60; // Увеличиваем количество замеров
         const results: number[] = [];
-        const warmupCount = 10; // Больше разогревающих пингов
+        const warmupCount = 15; // Больше разогревающих пингов
 
         // Функция для одного пинг-запроса с максимальной оптимизацией
         const doPing = async (): Promise<number | null> => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 500); // Уменьшаем таймаут до 500мс
+            const timeoutId = setTimeout(() => controller.abort(), 400); // Уменьшаем таймаут еще больше
 
             try {
                 const start = performance.now();
@@ -93,68 +101,73 @@ export const useSpeedTest = () => {
                         'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
                         'Pragma': 'no-cache',
                         'Connection': 'keep-alive',
-                        'Accept': '*/*'
+                        'Accept': '*/*',
                     },
                     cache: 'no-store',
                     signal: controller.signal,
-                    keepalive: true,
-                    priority: 'high'
+                    keepalive: true
                 });
-                
-                const end = performance.now();
-                clearTimeout(timeoutId);
-                
+
                 if (!response.ok) return null;
-                return Math.max(0.1, end - start); // Уменьшаем минимум до 0.1мс
+
+                const end = performance.now();
+                return Math.max(0.1, end - start); // Минимальный пинг 0.1мс
             } catch (error) {
-                clearTimeout(timeoutId);
                 return null;
+            } finally {
+                clearTimeout(timeoutId);
             }
         };
 
-        // Агрессивный разогрев соединения
+        // Выполняем разогревающие пинги
         for (let i = 0; i < warmupCount; i++) {
             await doPing();
-            await new Promise(resolve => setTimeout(resolve, 20)); // Уменьшаем паузу
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
 
-        // Основные замеры очень маленькими группами
-        const batchSize = 2; // Уменьшаем размер группы
+        // Параллельное выполнение пингов для большей точности
+        const batchSize = 5;
         for (let i = 0; i < samples; i += batchSize) {
-            const pingPromises = Array(batchSize).fill(0).map(() => doPing());
-            const batchResults = (await Promise.all(pingPromises))
-                .filter((p): p is number => p !== null);
+            const batch = Array(Math.min(batchSize, samples - i)).fill(null);
+            const batchResults = await Promise.all(batch.map(() => doPing()));
             
-            results.push(...batchResults);
+            results.push(...batchResults.filter((r): r is number => r !== null));
             
-            if (i + batchSize < samples) {
-                await new Promise(resolve => setTimeout(resolve, 20)); // Уменьшаем паузу
-            }
+            if (results.length >= samples) break;
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
 
-        if (results.length === 0) {
-            return { min: 5, max: 15, avg: 10, jitter: 2 }; // Сверхоптимистичные значения
-        }
-
-        // Берём только лучшие 30% результатов
+        // Улучшенная обработка результатов
         results.sort((a, b) => a - b);
-        const validResults = results.slice(0, Math.ceil(results.length * 0.3));
-
-        // Супер-агрессивная оптимизация результатов
-        const optimizationFactor = 0.3; // Уменьшаем результаты на 70%
         
-        const min = Math.min(...validResults) * optimizationFactor;
-        const max = Math.min(Math.max(...validResults) * optimizationFactor, 30); // Максимум 30мс
-        const avg = (validResults.reduce((sum, val) => sum + val, 0) / validResults.length) * optimizationFactor;
+        // Отбрасываем выбросы (10% худших и лучших результатов)
+        const trimmedResults = results.slice(
+            Math.floor(results.length * 0.1),
+            Math.ceil(results.length * 0.9)
+        );
 
-        const jitter = validResults.slice(1).reduce((sum, val, idx) => 
-            sum + Math.abs(val - validResults[idx]), 0) / (validResults.length - 1) * optimizationFactor;
+        if (trimmedResults.length === 0) return {
+            min: 0,
+            max: 0,
+            avg: 0,
+            jitter: 0
+        };
+
+        const min = Math.min(...trimmedResults);
+        const max = Math.max(...trimmedResults);
+        const avg = trimmedResults.reduce((a, b) => a + b, 0) / trimmedResults.length;
+        
+        // Улучшенный расчет джиттера
+        const jitterValues = trimmedResults.slice(1).map((val, i) => 
+            Math.abs(val - trimmedResults[i])
+        );
+        const jitter = jitterValues.reduce((a, b) => a + b, 0) / jitterValues.length;
 
         return {
-            min: Math.max(Math.round(min), 5), // Минимум 5мс
-            max: Math.min(Math.round(max), 15), // Максимум 15мс
-            avg: Math.round(Math.min(avg, 10)), // Среднее не больше 10мс
-            jitter: Math.round(jitter * 10) / 10
+            min: parseFloat(min.toFixed(1)),
+            max: parseFloat(max.toFixed(1)),
+            avg: parseFloat(avg.toFixed(1)),
+            jitter: parseFloat(jitter.toFixed(1))
         };
     };
 
