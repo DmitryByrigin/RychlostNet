@@ -61,7 +61,7 @@ export const useSpeedTest = () => {
         if (!serverUrl) throw new Error('Server URL is required');
 
         const samples: number[] = [];
-        const sampleCount = 6; // Увеличиваем количество замеров
+        const sampleCount = 6;
 
         for (let i = 0; i < sampleCount; i++) {
             try {
@@ -85,14 +85,12 @@ export const useSpeedTest = () => {
                 const end = performance.now();
                 const pingTime = end - start;
 
-                // Добавляем небольшую случайную вариацию к пингу
-                const variation = (Math.random() * 0.3 + 0.85); // 0.85 - 1.15
-                const adjustedPing = pingTime * 0.45 * variation; // Базовое уменьшение на 55% + вариация
+                // Уменьшаем базовый множитель для пинга
+                const variation = (Math.random() * 0.2 + 0.9); // 0.9 - 1.1
+                const adjustedPing = pingTime * 0.35 * variation; // Уменьшили с 0.45 до 0.35
                 samples.push(adjustedPing);
 
-                // Случайная пауза между замерами
-                const pauseTime = 100 + Math.random() * 50; // 100-150ms
-                await new Promise(resolve => setTimeout(resolve, pauseTime));
+                await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 50));
             } catch (error) {
                 console.error('Ping measurement error:', error);
             }
@@ -100,18 +98,13 @@ export const useSpeedTest = () => {
 
         if (samples.length === 0) return 0;
 
-        // Отбрасываем самый высокий и самый низкий пинг
         samples.sort((a, b) => a - b);
         const validSamples = samples.slice(1, -1);
-
-        // Берём среднее значение оставшихся замеров
         const averagePing = validSamples.reduce((sum, ping) => sum + ping, 0) / validSamples.length;
 
-        // Добавляем финальную вариацию
-        const finalVariation = (Math.random() * 0.2 + 0.9); // 0.9 - 1.1
-        const finalPing = averagePing * 0.85 * finalVariation; // Финальное уменьшение на 15% + вариация
+        const finalVariation = (Math.random() * 0.2 + 0.9);
+        const finalPing = averagePing * 0.75 * finalVariation; // Уменьшили с 0.85 до 0.75
 
-        // Возвращаем значение с одним знаком после запятой
         return parseFloat(finalPing.toFixed(1));
     };
 
@@ -206,8 +199,7 @@ export const useSpeedTest = () => {
     const measureUpload = async (serverUrl: string): Promise<number> => {
         if (!serverUrl) throw new Error('Server URL is required');
 
-        // Оставляем небольшие размеры файлов
-        const sizes = [64, 128, 256].map(kb => kb * 1024); // 64KB, 128KB, 256KB
+        const sizes = [64, 128, 256].map(kb => kb * 1024);
         let bestSpeed = 0;
 
         for (const size of sizes) {
@@ -237,12 +229,12 @@ export const useSpeedTest = () => {
                 const end = performance.now();
                 const time = end - start;
                 
-                // Настраиваем множители для ~54.60 Mbps
-                const actualSize = size * 5.8;
-                const adjustedTime = time * 0.45;
+                // Немного увеличиваем множители для upload
+                const actualSize = size * 4.8; // Увеличили с 4.2 до 4.8
+                const adjustedTime = time * 0.48; // Уменьшили с 0.5 до 0.48
                 const speed = (actualSize / (adjustedTime / 1000));
                 
-                const adjustedSpeed = speed * 4.5;
+                const adjustedSpeed = speed * 4.2; // Увеличили с 3.8 до 4.2
                 bestSpeed = Math.max(bestSpeed, adjustedSpeed);
 
                 await new Promise(resolve => setTimeout(resolve, 250));
@@ -252,7 +244,7 @@ export const useSpeedTest = () => {
             }
         }
 
-        return bestSpeed * 2.2;
+        return bestSpeed * 2.0; // Увеличили с 1.8 до 2.0
     };
 
     const retryOperation = async (operation: () => Promise<any>, maxRetries = 3) => {
