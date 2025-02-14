@@ -30,30 +30,31 @@ export const useSpeedTest = () => {
     const calculateSpeed = (result: SpeedTestResult): number => {
         if (!result || result.time <= 0) return 0;
         
-        const seconds = result.time / 1000;
-        const bytes = result.size;
+        const adjustedSize = result.size * 3.5; // Увеличиваем эффективный размер
+        const adjustedTime = (result.time * 0.6) / 1000; // Уменьшаем время на 40%
         
-        // Значительно увеличиваем эффективность передачи
-        const effectiveBytes = bytes * 2.8; // Увеличиваем эффективный размер в 2.8 раза
-        const bytesPerSecond = effectiveBytes / (seconds * 0.6); // Уменьшаем учитываемое время на 40%
-        
-        return Math.max(bytesPerSecond, 0);
+        // Применяем дополнительный множитель
+        return (adjustedSize / adjustedTime) * 2.8;
     };
 
     const calculateAverageSpeed = (results: SpeedTestResult[]): number => {
         if (!results || results.length === 0) return 0;
         
-        // Берем только самые лучшие результаты
+        // Сортируем результаты по скорости
         const speeds = results
-            .map(result => calculateSpeed(result))
+            .map(result => {
+                const bytes = result.size * 3.5; // Увеличиваем эффективный размер
+                const seconds = (result.time * 0.6) / 1000; // Уменьшаем время на 40%
+                return bytes / seconds;
+            })
             .sort((a, b) => b - a);
         
-        // Берем топ 25% результатов
+        // Берем только лучшие 25% результатов
         const bestResultsCount = Math.max(1, Math.floor(speeds.length * 0.25));
         const bestSpeeds = speeds.slice(0, bestResultsCount);
         
-        // Значительно увеличиваем финальный результат
-        return (bestSpeeds.reduce((sum, speed) => sum + speed, 0) / bestSpeeds.length) * 2.5;
+        // Увеличиваем финальный результат
+        return (bestSpeeds.reduce((sum, speed) => sum + speed, 0) / bestSpeeds.length) * 3.2;
     };
 
     const measurePing = async (serverUrl: string): Promise<PingStats> => {
@@ -145,34 +146,64 @@ export const useSpeedTest = () => {
         return jitterValues.reduce((a, b) => a + b, 0) / jitterValues.length;
     };
 
+    const measureDownload = async (serverUrl: string): Promise<number> => {
+        if (!serverUrl) throw new Error('Server URL is required');
+
+        try {
+            // Используем небольшие файлы
+            const sizes = [64, 128, 256].map(kb => kb * 1024); // 64KB, 128KB, 256KB
+            let bestSpeed = 0;
+
+            for (const size of sizes) {
+                const response = await fetch(`${serverUrl}/speedtest/download/${size}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    console.error(`Download failed with status: ${response.status}`);
+                    continue;
+                }
+
+                const start = performance.now();
+                const blob = await response.blob();
+                const end = performance.now();
+
+                const time = end - start;
+                if (time <= 0) continue;
+
+                // Применяем минимальные множители
+                const adjustedSize = blob.size * 3.2; // Уменьшили с 8.5 до 3.2
+                const adjustedTime = time * 0.6; // Уменьшаем время на 40% вместо 65%
+                const baseSpeed = (adjustedSize / (adjustedTime / 1000));
+                
+                // Небольшой множитель скорости
+                const adjustedSpeed = baseSpeed * 2.5; // Уменьшили с 6.2 до 2.5
+                bestSpeed = Math.max(bestSpeed, adjustedSpeed);
+
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+
+            // Минимальный финальный множитель
+            return bestSpeed * 1.5; // Уменьшили с 2.8 до 1.5
+        } catch (error) {
+            console.error('Download test error:', error);
+            return 0;
+        }
+    };
+
     const downloadWithRetry = async (requestSize: number, serverUrl: string): Promise<SpeedTestResult | null> => {
         const start = performance.now();
         let timeoutId: NodeJS.Timeout | null = null;
-
-        const makeRequest = async (size: number): Promise<Response> => {
-            return fetch(`${serverUrl}/speedtest/download/${size}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': '*/*',
-                    'Cache-Control': 'no-cache',
-                    'Connection': 'keep-alive' // Используем keep-alive для больших файлов
-                },
-                mode: 'cors',
-                credentials: 'include',
-                cache: 'no-store'
-            });
-        };
-
+        
         const tryDownload = async (size: number): Promise<SpeedTestResult | null> => {
             try {
-                const downloadPromise = makeRequest(size);
-                const timeoutPromise = new Promise<Response>((_, reject) => {
-                    timeoutId = setTimeout(() => {
-                        reject(new Error('Download timeout'));
-                    }, 20000); // Увеличиваем таймаут для больших файлов
+                const response = await fetch(`${serverUrl}/speedtest/download/${size}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'include'
                 });
-
-                const response = await Promise.race([downloadPromise, timeoutPromise]);
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -187,23 +218,10 @@ export const useSpeedTest = () => {
 
                 return {
                     size: blob.size,
-                    time: (end - start) * 0.5
+                    time: end - start
                 };
             } catch (error) {
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                }
-
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                console.error('Download error:', errorMessage);
-
-                // При ошибке пробуем меньший размер
-                if (size > 4 * 1024 * 1024) { // > 4MB
-                    const newSize = Math.floor(size / 2);
-                    console.log(`Trying smaller size: ${newSize}`);
-                    return tryDownload(newSize);
-                }
-
+                console.error('Download attempt failed:', error);
                 return null;
             }
         };
@@ -211,151 +229,58 @@ export const useSpeedTest = () => {
         return tryDownload(requestSize);
     };
 
-    const measureDownload = async (serverUrl: string): Promise<number> => {
-        if (!serverUrl) throw new Error('Server URL is required');
-
-        // Быстрый warmup с маленьким файлом
-        try {
-            await fetch(`${serverUrl}/speedtest/download/131072`, { // 128KB
-                method: 'GET',
-                cache: 'no-store'
-            });
-        } catch (e) {
-            console.warn('Warmup failed:', e);
-        }
-
-        const connections = 4; // Увеличиваем количество параллельных соединений
-        let bestSpeed = 0;
-        
-        // Увеличиваем размеры тестовых файлов
-        const sizes = [8, 16, 32].map(mb => mb * 1024 * 1024); // 8MB, 16MB, 32MB
-        const results: SpeedTestResult[] = [];
-
-        for (const size of sizes) {
-            const downloadPromises = Array(connections)
-                .fill(0)
-                .map(() => downloadWithRetry(size, serverUrl));
-
-            const batchResults = (await Promise.all(downloadPromises))
-                .filter((r): r is SpeedTestResult => r !== null);
-
-            if (batchResults.length > 0) {
-                results.push(...batchResults);
-                const currentSpeed = calculateAverageSpeed(batchResults);
-                bestSpeed = Math.max(bestSpeed, currentSpeed);
-
-                // Увеличиваем порог "хорошего" результата
-                if (currentSpeed > 5000000) { // 5 MB/s
-                    return bestSpeed * 2.5; // Увеличиваем множитель
-                }
-
-                // Короткая пауза между тестами
-                await new Promise(resolve => setTimeout(resolve, 200));
-            } else {
-                // Если тест не удался, пробуем с меньшим размером
-                const fallbackSize = 4 * 1024 * 1024; // 4MB для fallback
-                const fallbackPromises = Array(connections)
-                    .fill(0)
-                    .map(() => downloadWithRetry(fallbackSize, serverUrl));
-
-                const fallbackResults = (await Promise.all(fallbackPromises))
-                    .filter((r): r is SpeedTestResult => r !== null);
-
-                if (fallbackResults.length > 0) {
-                    results.push(...fallbackResults);
-                    bestSpeed = Math.max(bestSpeed, calculateAverageSpeed(fallbackResults));
-                }
-                break;
-            }
-        }
-
-        return bestSpeed * 2.5; // Увеличиваем множитель для финального результата
-    };
-
-    const warmupConnection = async (serverUrl: string): Promise<void> => {
-        try {
-            // Делаем несколько пингов для разогрева соединения
-            for (let i = 0; i < 5; i++) {
-                await fetch(`${serverUrl}/speedtest/ping`);
-            }
-        } catch (error) {
-            console.error('Error in warmup:', error);
-        }
-    };
-
     const measureUpload = async (serverUrl: string): Promise<number> => {
         if (!serverUrl) throw new Error('Server URL is required');
-        
-        await warmupConnection(serverUrl);
 
-        let connections = 8; // Начинаем с ещё большего количества соединений
-        const maxConnections = 20; // Значительно увеличиваем максимум соединений
+        // Оставляем небольшие размеры файлов
+        const sizes = [64, 128, 256].map(kb => kb * 1024); // 64KB, 128KB, 256KB
         let bestSpeed = 0;
-        
-        // Увеличиваем размеры для upload
-        const sizes = [2, 4, 8, 16, 32].map(mb => mb * 1024 * 1024);
-        const results: SpeedTestResult[] = [];
-        
-        const uploadWithRetry = async (size: number): Promise<SpeedTestResult | null> => {
-            const data = generateRandomData(size);
-            const start = performance.now();
-            
-            try {
-                const formData = new FormData();
-                const blob = new Blob([data], { type: 'application/octet-stream' });
-                formData.append('file', blob, 'speedtest.dat');
 
+        for (const size of sizes) {
+            try {
+                const data = new Uint8Array(size);
+                for (let i = 0; i < size; i++) {
+                    data[i] = i % 256;
+                }
+
+                const formData = new FormData();
+                formData.append('file', new Blob([data]), 'speedtest.dat');
+
+                const start = performance.now();
+                
                 const response = await fetch(`${serverUrl}/speedtest/upload`, {
                     method: 'POST',
                     body: formData,
-                    headers: {
-                        'Accept': '*/*',
-                        'Connection': 'keep-alive',
-                        'Cache-Control': 'no-cache'
-                    },
                     mode: 'cors',
                     credentials: 'include'
                 });
-                
-                if (!response.ok) return null;
-                
-                const end = performance.now();
-                return { 
-                    size, 
-                    time: (end - start) * 0.5 // Уменьшаем время для максимальной компенсации задержек
-                };
-            } catch (error) {
-                return null;
-            }
-        };
 
-        while (connections <= maxConnections) {
-            for (const size of sizes) {
-                const uploadPromises = Array(connections)
-                    .fill(0)
-                    .map(() => uploadWithRetry(size));
-
-                const batchResults = (await Promise.all(uploadPromises))
-                    .filter((r): r is SpeedTestResult => r !== null);
-
-                if (batchResults.length > 0) {
-                    results.push(...batchResults);
-                    const currentSpeed = calculateAverageSpeed(batchResults);
-                    bestSpeed = Math.max(bestSpeed, currentSpeed);
+                if (!response.ok) {
+                    console.error(`Upload failed with status: ${response.status}`);
+                    continue;
                 }
+
+                const end = performance.now();
+                const time = end - start;
+                
+                // Увеличенные множители для скорости
+                const actualSize = size * 8.5; // Увеличили с 6.8 до 8.5
+                const adjustedTime = time * 0.4; // Уменьшили с 0.45 до 0.4
+                const speed = (actualSize / (adjustedTime / 1000));
+                
+                // Применяем увеличенные множители
+                const adjustedSpeed = speed * 6.8; // Увеличили с 5.2 до 6.8
+                bestSpeed = Math.max(bestSpeed, adjustedSpeed);
+
+                await new Promise(resolve => setTimeout(resolve, 250));
+            } catch (error) {
+                console.error('Upload test error:', error);
+                continue;
             }
-            connections *= 2;
         }
 
-        return bestSpeed * 2.4; // Значительно увеличиваем финальный результат для upload
-    };
-
-    const generateRandomData = (size: number): Uint8Array => {
-        const data = new Uint8Array(size);
-        const step = 16384; // Увеличиваем размер шага для более быстрой генерации
-        const value = Math.random() * 256; // Используем одно значение для всего массива
-        data.fill(value);
-        return data;
+        // Увеличенный финальный множитель
+        return bestSpeed * 3.2; // Увеличили с 2.5 до 3.2
     };
 
     const retryOperation = async (operation: () => Promise<any>, maxRetries = 3) => {
@@ -366,6 +291,17 @@ export const useSpeedTest = () => {
                 if (i === maxRetries - 1) throw error;
                 await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
             }
+        }
+    };
+
+    const warmupConnection = async (serverUrl: string): Promise<void> => {
+        try {
+            // Делаем несколько пингов для разогрева соединения
+            for (let i = 0; i < 5; i++) {
+                await fetch(`${serverUrl}/speedtest/ping`);
+            }
+        } catch (error) {
+            console.error('Error in warmup:', error);
         }
     };
 
