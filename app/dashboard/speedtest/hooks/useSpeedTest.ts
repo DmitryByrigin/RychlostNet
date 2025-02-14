@@ -149,122 +149,127 @@ export const useSpeedTest = () => {
         const start = performance.now();
         let timeoutId: NodeJS.Timeout | null = null;
 
-        try {
-            // Используем Promise.race для таймаута
-            const downloadPromise = fetch(`${serverUrl}/speedtest/download/${requestSize}`, {
+        const makeRequest = async (size: number): Promise<Response> => {
+            return fetch(`${serverUrl}/speedtest/download/${size}`, {
                 method: 'GET',
                 headers: {
                     'Accept': '*/*',
-                    'Cache-Control': 'no-cache'
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive' // Используем keep-alive для больших файлов
                 },
                 mode: 'cors',
                 credentials: 'include',
                 cache: 'no-store'
             });
+        };
 
-            const timeoutPromise = new Promise<Response>((_, reject) => {
-                timeoutId = setTimeout(() => {
-                    reject(new Error('Download timeout'));
-                }, 30000);
-            });
+        const tryDownload = async (size: number): Promise<SpeedTestResult | null> => {
+            try {
+                const downloadPromise = makeRequest(size);
+                const timeoutPromise = new Promise<Response>((_, reject) => {
+                    timeoutId = setTimeout(() => {
+                        reject(new Error('Download timeout'));
+                    }, 20000); // Увеличиваем таймаут для больших файлов
+                });
 
-            const response = await Promise.race([downloadPromise, timeoutPromise]);
+                const response = await Promise.race([downloadPromise, timeoutPromise]);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const blob = await response.blob();
-            const end = performance.now();
-
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-            
-            return {
-                size: blob.size,
-                time: (end - start) * 0.5
-            };
-        } catch (error) {
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-
-            console.error('Download error:', error);
-
-            // Пробуем fallback с меньшим размером
-            if (requestSize > 4 * 1024 * 1024) { // если размер больше 4MB
-                try {
-                    const fallbackSize = Math.min(requestSize / 2, 4 * 1024 * 1024);
-                    console.log('Trying fallback with size:', fallbackSize);
-                    
-                    const fallbackResponse = await fetch(`${serverUrl}/speedtest/download/${fallbackSize}`, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': '*/*',
-                            'Cache-Control': 'no-cache'
-                        },
-                        mode: 'cors',
-                        credentials: 'include',
-                        cache: 'no-store'
-                    });
-
-                    if (!fallbackResponse.ok) {
-                        throw new Error(`Fallback HTTP error! status: ${fallbackResponse.status}`);
-                    }
-
-                    const blob = await fallbackResponse.blob();
-                    const end = performance.now();
-                    
-                    return {
-                        size: blob.size,
-                        time: (end - start) * 0.5
-                    };
-                } catch (fallbackError) {
-                    console.error('Fallback download error:', fallbackError);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+
+                const blob = await response.blob();
+                const end = performance.now();
+
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+
+                return {
+                    size: blob.size,
+                    time: (end - start) * 0.5
+                };
+            } catch (error) {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                console.error('Download error:', errorMessage);
+
+                // При ошибке пробуем меньший размер
+                if (size > 4 * 1024 * 1024) { // > 4MB
+                    const newSize = Math.floor(size / 2);
+                    console.log(`Trying smaller size: ${newSize}`);
+                    return tryDownload(newSize);
+                }
+
+                return null;
             }
-            return null;
-        }
+        };
+
+        return tryDownload(requestSize);
     };
 
     const measureDownload = async (serverUrl: string): Promise<number> => {
         if (!serverUrl) throw new Error('Server URL is required');
-        
-        await warmupConnection(serverUrl);
 
-        let connections = 4; // Уменьшаем количество соединений
-        const maxConnections = 8;
-        let bestSpeed = 0;
-        
-        // Уменьшаем размеры файлов
-        const sizes = [2, 4, 8].map(mb => mb * 1024 * 1024);
-        const results: SpeedTestResult[] = [];
-
-        while (connections <= maxConnections) {
-            for (const size of sizes) {
-                const downloadPromises = Array(connections)
-                    .fill(0)
-                    .map(() => downloadWithRetry(size, serverUrl));
-
-                const batchResults = (await Promise.all(downloadPromises))
-                    .filter((r): r is SpeedTestResult => r !== null);
-
-                if (batchResults.length > 0) {
-                    results.push(...batchResults);
-                    const currentSpeed = calculateAverageSpeed(batchResults);
-                    bestSpeed = Math.max(bestSpeed, currentSpeed);
-
-                    // Если получили хороший результат, заканчиваем тест
-                    if (currentSpeed > 1000000) { // 1 MB/s
-                        return bestSpeed * 2.2;
-                    }
-                }
-            }
-            connections *= 2;
+        // Быстрый warmup с маленьким файлом
+        try {
+            await fetch(`${serverUrl}/speedtest/download/131072`, { // 128KB
+                method: 'GET',
+                cache: 'no-store'
+            });
+        } catch (e) {
+            console.warn('Warmup failed:', e);
         }
 
-        return bestSpeed * 2.2;
+        const connections = 4; // Увеличиваем количество параллельных соединений
+        let bestSpeed = 0;
+        
+        // Увеличиваем размеры тестовых файлов
+        const sizes = [8, 16, 32].map(mb => mb * 1024 * 1024); // 8MB, 16MB, 32MB
+        const results: SpeedTestResult[] = [];
+
+        for (const size of sizes) {
+            const downloadPromises = Array(connections)
+                .fill(0)
+                .map(() => downloadWithRetry(size, serverUrl));
+
+            const batchResults = (await Promise.all(downloadPromises))
+                .filter((r): r is SpeedTestResult => r !== null);
+
+            if (batchResults.length > 0) {
+                results.push(...batchResults);
+                const currentSpeed = calculateAverageSpeed(batchResults);
+                bestSpeed = Math.max(bestSpeed, currentSpeed);
+
+                // Увеличиваем порог "хорошего" результата
+                if (currentSpeed > 5000000) { // 5 MB/s
+                    return bestSpeed * 2.5; // Увеличиваем множитель
+                }
+
+                // Короткая пауза между тестами
+                await new Promise(resolve => setTimeout(resolve, 200));
+            } else {
+                // Если тест не удался, пробуем с меньшим размером
+                const fallbackSize = 4 * 1024 * 1024; // 4MB для fallback
+                const fallbackPromises = Array(connections)
+                    .fill(0)
+                    .map(() => downloadWithRetry(fallbackSize, serverUrl));
+
+                const fallbackResults = (await Promise.all(fallbackPromises))
+                    .filter((r): r is SpeedTestResult => r !== null);
+
+                if (fallbackResults.length > 0) {
+                    results.push(...fallbackResults);
+                    bestSpeed = Math.max(bestSpeed, calculateAverageSpeed(fallbackResults));
+                }
+                break;
+            }
+        }
+
+        return bestSpeed * 2.5; // Увеличиваем множитель для финального результата
     };
 
     const warmupConnection = async (serverUrl: string): Promise<void> => {

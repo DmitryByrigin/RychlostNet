@@ -22,6 +22,9 @@ const nextConfig = {
             ],
         },
     ],
+    experimental: {
+        quic: false,
+    },
 };
 
 export default nextConfig;
