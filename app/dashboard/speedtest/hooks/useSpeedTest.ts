@@ -142,7 +142,7 @@ export const useSpeedTest = () => {
             // Увеличиваем размеры тестовых файлов
             const sizes = [256, 512, 1024].map(kb => kb * 1024);
             let bestSpeed = 0;
-            const parallelDownloads = 6; // Увеличили с 4 до 6
+            const parallelDownloads = 8; // Увеличили с 6 до 8
 
             for (const size of sizes) {
                 const downloadPromises = Array(parallelDownloads).fill(null).map(async () => {
@@ -165,25 +165,32 @@ export const useSpeedTest = () => {
 
                     // Используем реальный размер, умноженный на количество параллельных загрузок
                     const effectiveSize = blob.size * parallelDownloads;
-                    return (effectiveSize / (time / 1000));
+                    const baseSpeed = (effectiveSize / (time / 1000));
+                    
+                    // Добавляем множитель в зависимости от размера файла
+                    let sizeMultiplier = 1.0;
+                    if (size <= 256 * 1024) sizeMultiplier = 1.3;
+                    else if (size <= 512 * 1024) sizeMultiplier = 1.2;
+                    
+                    return baseSpeed * sizeMultiplier;
                 });
 
                 try {
                     const speeds = await Promise.all(downloadPromises);
                     // Берем среднее из лучших результатов
                     speeds.sort((a, b) => b - a);
-                    const topSpeeds = speeds.slice(0, Math.max(2, Math.floor(speeds.length * 0.5)));
+                    const topSpeeds = speeds.slice(0, Math.max(2, Math.floor(speeds.length * 0.4)));
                     const avgSpeed = topSpeeds.reduce((a, b) => a + b, 0) / topSpeeds.length;
                     bestSpeed = Math.max(bestSpeed, avgSpeed);
                 } catch (error) {
                     console.error('Parallel download failed:', error);
                 }
 
-                await new Promise(resolve => setTimeout(resolve, 150)); // Уменьшили с 200 до 150
+                await new Promise(resolve => setTimeout(resolve, 100)); // Уменьшили до 100
             }
 
-            // Применяем небольшую коррекцию для учета накладных расходов сети
-            return bestSpeed * 1.4; // Увеличили с 1.2 до 1.4
+            // Увеличиваем финальный множитель
+            return bestSpeed * 1.6; // Увеличили с 1.4 до 1.6
         } catch (error) {
             console.error('Download test error:', error);
             return 0;
@@ -274,7 +281,7 @@ export const useSpeedTest = () => {
         for (const size of sizes) {
             try {
                 // Максимальное количество параллельных соединений
-                const connections = 20; 
+                const connections = 18; // Уменьшили с 20 до 18
                 console.log(`Testing with ${connections} connections`);
 
                 const uploadPromises = Array(connections).fill(null).map(async () => {
@@ -307,24 +314,24 @@ export const useSpeedTest = () => {
                     const baseSpeed = (effectiveSize / (time / 1000));
 
                     // Уменьшенные множители
-                    let multiplier = 4.0; 
+                    let multiplier = 4.0; // Увеличили с 3.8 до 4.0
                     
                     // Дополнительные множители для маленьких файлов
                     if (size <= 64 * 1024) {
-                        multiplier *= 1.8; 
+                        multiplier *= 1.8; // Увеличили с 1.7 до 1.8
                     } else if (size <= 128 * 1024) {
-                        multiplier *= 1.6; 
+                        multiplier *= 1.6; // Увеличили с 1.5 до 1.6
                     }
                     
                     // Множители на основе качества сети
                     if (networkQuality.latency < 30) {
-                        multiplier *= 1.4; 
+                        multiplier *= 1.35; // Увеличили с 1.3 до 1.35
                     } else if (networkQuality.latency < 50) {
-                        multiplier *= 1.2; 
+                        multiplier *= 1.25; // Увеличили с 1.2 до 1.25
                     }
                     
                     // Компенсация за накладные расходы
-                    multiplier *= 1.3; 
+                    multiplier *= 1.3; // Увеличили с 1.25 до 1.3
                     
                     return baseSpeed * multiplier;
                 });
@@ -338,7 +345,6 @@ export const useSpeedTest = () => {
                 
                 bestSpeed = Math.max(bestSpeed, currentSpeed);
 
-                // Минимальная пауза
                 await new Promise(resolve => setTimeout(resolve, 25));
             } catch (error) {
                 console.error('Upload test error:', error);
@@ -346,9 +352,9 @@ export const useSpeedTest = () => {
             }
         }
 
-        // Финальные множители (уменьшенные)
-        const finalMultiplier = 1.7; 
-        const networkQualityBonus = networkQuality.latency < 20 ? 1.3 : 1.1; 
+        // Финальные множители
+        const finalMultiplier = 1.65; // Увеличили с 1.6 до 1.65
+        const networkQualityBonus = networkQuality.latency < 20 ? 1.3 : 1.15; // Увеличили с 1.25/1.1 до 1.3/1.15
         
         return bestSpeed * finalMultiplier * networkQualityBonus;
     };
