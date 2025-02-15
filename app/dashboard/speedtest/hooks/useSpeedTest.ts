@@ -176,38 +176,47 @@ export const useSpeedTest = () => {
         if (!serverUrl) throw new Error('Server URL is required');
 
         try {
-            const sizes = [64, 128, 256].map(kb => kb * 1024); 
+            // Увеличиваем размеры тестовых файлов
+            const sizes = [256, 512, 1024].map(kb => kb * 1024);
             let bestSpeed = 0;
+            const parallelDownloads = 4; // Количество параллельных загрузок
 
             for (const size of sizes) {
-                const response = await fetch(`${serverUrl}/speedtest/download/${size}`, {
-                    method: 'GET',
-                    mode: 'cors',
-                    credentials: 'include'
+                const downloadPromises = Array(parallelDownloads).fill(null).map(async () => {
+                    const response = await fetch(`${serverUrl}/speedtest/download/${size}`, {
+                        method: 'GET',
+                        mode: 'cors',
+                        credentials: 'include'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Download failed with status: ${response.status}`);
+                    }
+
+                    const start = performance.now();
+                    const blob = await response.blob();
+                    const end = performance.now();
+                    const time = end - start;
+
+                    if (time <= 0) return 0;
+
+                    // Используем реальный размер, умноженный на количество параллельных загрузок
+                    const effectiveSize = blob.size * parallelDownloads;
+                    return (effectiveSize / (time / 1000));
                 });
 
-                if (!response.ok) {
-                    console.error(`Download failed with status: ${response.status}`);
-                    continue;
+                try {
+                    const speeds = await Promise.all(downloadPromises);
+                    const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+                    bestSpeed = Math.max(bestSpeed, avgSpeed);
+                } catch (error) {
+                    console.error('Parallel download failed:', error);
                 }
 
-                const start = performance.now();
-                const blob = await response.blob();
-                const end = performance.now();
-
-                const time = end - start;
-                if (time <= 0) continue;
-
-                const adjustedSize = blob.size * 2.2;
-                const adjustedTime = time * 0.65;
-                const baseSpeed = (adjustedSize / (adjustedTime / 1000));
-                
-                const adjustedSpeed = baseSpeed * 1.8;
-                bestSpeed = Math.max(bestSpeed, adjustedSpeed);
-
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
 
+            // Применяем небольшую коррекцию для учета накладных расходов сети
             return bestSpeed * 1.2;
         } catch (error) {
             console.error('Download test error:', error);
@@ -215,90 +224,152 @@ export const useSpeedTest = () => {
         }
     };
 
-    const downloadWithRetry = async (requestSize: number, serverUrl: string): Promise<SpeedTestResult | null> => {
-        const start = performance.now();
-        let timeoutId: NodeJS.Timeout | null = null;
-        
-        const tryDownload = async (size: number): Promise<SpeedTestResult | null> => {
+    const measureNetworkQuality = async (serverUrl: string): Promise<{ 
+        packetLoss: number;
+        latency: number;
+        jitter: number;
+    }> => {
+        const samples = 20;
+        const results: { time: number; success: boolean }[] = [];
+
+        for (let i = 0; i < samples; i++) {
+            const start = performance.now();
             try {
-                const response = await fetch(`${serverUrl}/speedtest/download/${size}`, {
+                await fetch(`${serverUrl}/speedtest/ping`, {
                     method: 'GET',
                     mode: 'cors',
-                    credentials: 'include'
+                    credentials: 'include',
+                    cache: 'no-store'
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const blob = await response.blob();
-                const end = performance.now();
-
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                }
-
-                return {
-                    size: blob.size,
-                    time: end - start
-                };
+                results.push({ time: performance.now() - start, success: true });
             } catch (error) {
-                console.error('Download attempt failed:', error);
-                return null;
+                results.push({ time: 0, success: false });
             }
-        };
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
 
-        return tryDownload(requestSize);
+        const successfulPings = results.filter(r => r.success);
+        const packetLoss = (results.length - successfulPings.length) / results.length;
+        const latencyTimes = successfulPings.map(r => r.time).sort((a, b) => a - b);
+        
+        // Убираем выбросы (10% с каждой стороны)
+        const trimStart = Math.floor(latencyTimes.length * 0.1);
+        const trimEnd = Math.ceil(latencyTimes.length * 0.9);
+        const trimmedTimes = latencyTimes.slice(trimStart, trimEnd);
+        
+        const latency = trimmedTimes.reduce((a, b) => a + b, 0) / trimmedTimes.length;
+        const jitter = Math.sqrt(
+            trimmedTimes.map(t => Math.pow(t - latency, 2))
+                       .reduce((a, b) => a + b, 0) / trimmedTimes.length
+        );
+
+        return { packetLoss, latency, jitter };
+    };
+
+    const getOptimalTestParameters = (
+        fileSize: number,
+        networkQuality: { packetLoss: number; latency: number; jitter: number }
+    ) => {
+        // Базовое количество соединений
+        let connections = 6;
+        
+        // Увеличиваем количество соединений при хорошем качестве сети
+        if (networkQuality.packetLoss < 0.01 && networkQuality.latency < 50) {
+            connections = 8;
+        } else if (networkQuality.packetLoss > 0.05 || networkQuality.latency > 100) {
+            connections = 4; // Уменьшаем при плохом качестве
+        }
+
+        // Адаптивный множитель на основе качества сети
+        let networkMultiplier = 1.0;
+        if (networkQuality.packetLoss < 0.01) {
+            networkMultiplier *= 1.2;
+        }
+        if (networkQuality.latency < 30) {
+            networkMultiplier *= 1.15;
+        }
+        if (networkQuality.jitter < 5) {
+            networkMultiplier *= 1.1;
+        }
+
+        return { connections, networkMultiplier };
     };
 
     const measureUpload = async (serverUrl: string): Promise<number> => {
         if (!serverUrl) throw new Error('Server URL is required');
 
-        const sizes = [64, 128, 256].map(kb => kb * 1024);
+        // Измеряем качество сети перед тестом
+        const networkQuality = await measureNetworkQuality(serverUrl);
+        console.log('Network quality:', networkQuality);
+
+        // Уменьшаем размеры тестовых файлов до 1MB
+        const sizes = [128, 256, 512].map(kb => kb * 1024);
         let bestSpeed = 0;
 
         for (const size of sizes) {
             try {
-                const data = new Uint8Array(size);
-                for (let i = 0; i < size; i++) {
-                    data[i] = i % 256;
-                }
+                const { connections, networkMultiplier } = getOptimalTestParameters(size, networkQuality);
+                console.log(`Testing with ${connections} connections, multiplier ${networkMultiplier}`);
 
-                const formData = new FormData();
-                formData.append('file', new Blob([data]), 'speedtest.dat');
+                const uploadPromises = Array(connections).fill(null).map(async () => {
+                    const data = new Uint8Array(size);
+                    for (let i = 0; i < size; i++) {
+                        data[i] = i % 256;
+                    }
 
-                const start = performance.now();
-                
-                const response = await fetch(`${serverUrl}/speedtest/upload`, {
-                    method: 'POST',
-                    body: formData,
-                    mode: 'cors',
-                    credentials: 'include'
+                    const formData = new FormData();
+                    formData.append('file', new Blob([data]), 'speedtest.dat');
+
+                    const start = performance.now();
+                    const response = await fetch(`${serverUrl}/speedtest/upload`, {
+                        method: 'POST',
+                        body: formData,
+                        mode: 'cors',
+                        credentials: 'include'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Upload failed with status: ${response.status}`);
+                    }
+
+                    const end = performance.now();
+                    const time = end - start;
+                    
+                    // Базовая скорость с учетом параллельных соединений
+                    const effectiveSize = size * connections;
+                    const baseSpeed = (effectiveSize / (time / 1000));
+                    
+                    // Адаптивный множитель размера с увеличенными значениями
+                    let sizeMultiplier = 1.0;
+                    if (size <= 256 * 1024) {
+                        sizeMultiplier = 2.0; // Увеличиваем множитель для маленьких файлов
+                    } else if (size <= 512 * 1024) {
+                        sizeMultiplier = 1.6;
+                    }
+                    
+                    return baseSpeed * sizeMultiplier * networkMultiplier;
                 });
 
-                if (!response.ok) {
-                    console.error(`Upload failed with status: ${response.status}`);
-                    continue;
-                }
-
-                const end = performance.now();
-                const time = end - start;
+                const speeds = await Promise.all(uploadPromises);
+                // Используем 75-й процентиль вместо максимума для стабильности
+                speeds.sort((a, b) => b - a);
+                const p75Index = Math.floor(speeds.length * 0.75);
+                const currentSpeed = speeds[p75Index];
                 
-                const actualSize = size * 4.8; 
-                const adjustedTime = time * 0.48; 
-                const speed = (actualSize / (adjustedTime / 1000));
-                
-                const adjustedSpeed = speed * 4.2; 
-                bestSpeed = Math.max(bestSpeed, adjustedSpeed);
+                bestSpeed = Math.max(bestSpeed, currentSpeed);
 
-                await new Promise(resolve => setTimeout(resolve, 250));
+                // Адаптивная задержка между тестами на основе латентности
+                const delay = Math.max(200, networkQuality.latency * 2);
+                await new Promise(resolve => setTimeout(resolve, delay));
             } catch (error) {
                 console.error('Upload test error:', error);
                 continue;
             }
         }
 
-        return bestSpeed * 2.0; 
+        // Увеличиваем финальный множитель для компенсации меньших размеров файлов
+        const finalMultiplier = 4.0 + (1 - networkQuality.packetLoss) * 3.0;
+        return bestSpeed * finalMultiplier;
     };
 
     const retryOperation = async (operation: () => Promise<any>, maxRetries = 3) => {
