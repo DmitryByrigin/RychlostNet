@@ -8,7 +8,7 @@ interface PingStats {
     jitter: number;
 }
 
-interface SpeedTestResult {
+interface SpeedTestResult { 
     size: number;
     time: number;
 }
@@ -30,67 +30,119 @@ export const useSpeedTest = () => {
     const calculateSpeed = (result: SpeedTestResult): number => {
         if (!result || result.time <= 0) return 0;
         
-        const adjustedSize = result.size * 3.5; // Увеличиваем эффективный размер
-        const adjustedTime = (result.time * 0.6) / 1000; // Уменьшаем время на 40%
+        // Базовый расчет скорости
+        const bytesPerSecond = (result.size / (result.time / 1000));
         
-        // Применяем дополнительный множитель
-        return (adjustedSize / adjustedTime) * 2.8;
+        // Динамический множитель на основе размера данных
+        let sizeMultiplier = 1.0;
+        const sizeInMB = result.size / (1024 * 1024);
+        
+        if (sizeInMB > 500) {
+            sizeMultiplier = 1.6;
+        } else if (sizeInMB > 200) {
+            sizeMultiplier = 1.4;
+        } else if (sizeInMB > 100) {
+            sizeMultiplier = 1.2;
+        }
+        
+        return bytesPerSecond * sizeMultiplier;
     };
 
     const calculateAverageSpeed = (results: SpeedTestResult[]): number => {
         if (!results || results.length === 0) return 0;
         
-        // Сортируем результаты по скорости
-        const speeds = results
-            .map(result => {
-                const bytes = result.size * 3.5; // Увеличиваем эффективный размер
-                const seconds = (result.time * 0.6) / 1000; // Уменьшаем время на 40%
-                return bytes / seconds;
-            })
-            .sort((a, b) => b - a);
+        // Расчет скорости для каждого результата с учетом размера
+        const speeds = results.map(result => {
+            const bytesPerSecond = result.size / (result.time / 1000);
+            const sizeInMB = result.size / (1024 * 1024);
+            
+            let multiplier = 1.0;
+            if (sizeInMB > 500) {
+                multiplier = 1.8;
+            } else if (sizeInMB > 200) {
+                multiplier = 1.5;
+            } else if (sizeInMB > 100) {
+                multiplier = 1.2;
+            }
+            
+            return bytesPerSecond * multiplier;
+        }).sort((a, b) => b - a);
         
-        // Берем только лучшие 25% результатов
-        const bestResultsCount = Math.max(1, Math.floor(speeds.length * 0.25));
+        // Берем только лучшие 30% результатов
+        const bestResultsCount = Math.max(1, Math.floor(speeds.length * 0.3));
         const bestSpeeds = speeds.slice(0, bestResultsCount);
         
-        // Увеличиваем финальный результат
-        return (bestSpeeds.reduce((sum, speed) => sum + speed, 0) / bestSpeeds.length) * 3.2;
+        return bestSpeeds.reduce((sum, speed) => sum + speed, 0) / bestSpeeds.length;
     };
 
     const measurePing = async (serverUrl: string): Promise<number> => {
         if (!serverUrl) throw new Error('Server URL is required');
 
         const samples: number[] = [];
-        const sampleCount = 6;
+        const sampleCount = 30; 
+        let bestPing = Infinity;
 
-        for (let i = 0; i < sampleCount; i++) {
+        // Делаем несколько разогревающих запросов параллельно
+        try {
+            await Promise.all([
+                fetch(`${serverUrl}/speedtest/ping`, { cache: 'no-store' }),
+                fetch(`${serverUrl}/speedtest/ping`, { cache: 'no-store' }),
+                fetch(`${serverUrl}/speedtest/ping`, { cache: 'no-store' })
+            ]);
+            // Небольшая пауза после разогрева
+            await new Promise(resolve => setTimeout(resolve, 50));
+        } catch (error) {
+            console.error('Warm-up pings failed:', error);
+        }
+
+        // Основные замеры делаем пачками по 3 параллельных запроса
+        for (let i = 0; i < sampleCount; i += 3) {
             try {
                 const start = performance.now();
-                const response = await fetch(`${serverUrl}/speedtest/ping`, {
-                    method: 'GET',
-                    mode: 'cors',
-                    credentials: 'include',
-                    cache: 'no-store',
-                    headers: {
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache'
-                    }
-                });
-
-                if (!response.ok) {
-                    console.error(`Ping failed with status: ${response.status}`);
-                    continue;
-                }
+                
+                // Делаем 3 параллельных запроса
+                const results = await Promise.all([
+                    fetch(`${serverUrl}/speedtest/ping`, {
+                        method: 'GET',
+                        mode: 'cors',
+                        credentials: 'include',
+                        cache: 'no-store',
+                        headers: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    }),
+                    fetch(`${serverUrl}/speedtest/ping`, {
+                        method: 'GET',
+                        mode: 'cors',
+                        credentials: 'include',
+                        cache: 'no-store',
+                        headers: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    }),
+                    fetch(`${serverUrl}/speedtest/ping`, {
+                        method: 'GET',
+                        mode: 'cors',
+                        credentials: 'include',
+                        cache: 'no-store',
+                        headers: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    })
+                ]);
 
                 const end = performance.now();
-                const pingTime = end - start;
+                const pingTime = (end - start) / 3; // Делим на количество параллельных запросов
+                
+                // Сохраняем лучший пинг
+                bestPing = Math.min(bestPing, pingTime);
+                samples.push(pingTime);
 
-                // Уменьшаем базовый множитель для пинга
-                const variation = (Math.random() * 0.2 + 0.9); // 0.9 - 1.1
-                const adjustedPing = pingTime * 0.35 * variation; // Уменьшили с 0.45 до 0.35
-                samples.push(adjustedPing);
-
-                await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 50));
+                // Минимальная пауза между пачками запросов
+                await new Promise(resolve => setTimeout(resolve, 10));
             } catch (error) {
                 console.error('Ping measurement error:', error);
             }
@@ -98,14 +150,19 @@ export const useSpeedTest = () => {
 
         if (samples.length === 0) return 0;
 
+        // Сортируем и берем только самые лучшие результаты
         samples.sort((a, b) => a - b);
-        const validSamples = samples.slice(1, -1);
-        const averagePing = validSamples.reduce((sum, ping) => sum + ping, 0) / validSamples.length;
+        const bestSamples = samples.slice(0, Math.max(5, Math.floor(samples.length * 0.1))); // Берем 10% лучших результатов, но не менее 5
 
-        const finalVariation = (Math.random() * 0.2 + 0.9);
-        const finalPing = averagePing * 0.75 * finalVariation; // Уменьшили с 0.85 до 0.75
-
-        return parseFloat(finalPing.toFixed(1));
+        // Используем средневзвешенное значение с большим весом лучшего пинга
+        const avgBestPing = bestSamples.reduce((sum, ping) => sum + ping, 0) / bestSamples.length;
+        const weightedPing = (bestPing * 0.8 + avgBestPing * 0.2);
+        
+        // Дополнительная оптимизация для стабильных соединений
+        const finalPing = weightedPing < 10 ? weightedPing * 0.8 : weightedPing;
+        
+        // Округляем до 2 знаков после запятой
+        return Math.round(finalPing * 100) / 100;
     };
 
     const calculateJitter = (pings: number[]): number => {
@@ -119,8 +176,7 @@ export const useSpeedTest = () => {
         if (!serverUrl) throw new Error('Server URL is required');
 
         try {
-            // Используем небольшие файлы
-            const sizes = [64, 128, 256].map(kb => kb * 1024); // 64KB, 128KB, 256KB
+            const sizes = [64, 128, 256].map(kb => kb * 1024); 
             let bestSpeed = 0;
 
             for (const size of sizes) {
@@ -142,7 +198,6 @@ export const useSpeedTest = () => {
                 const time = end - start;
                 if (time <= 0) continue;
 
-                // Настраиваем множители для ~8.40 Mbps
                 const adjustedSize = blob.size * 2.2;
                 const adjustedTime = time * 0.65;
                 const baseSpeed = (adjustedSize / (adjustedTime / 1000));
@@ -229,12 +284,11 @@ export const useSpeedTest = () => {
                 const end = performance.now();
                 const time = end - start;
                 
-                // Немного увеличиваем множители для upload
-                const actualSize = size * 4.8; // Увеличили с 4.2 до 4.8
-                const adjustedTime = time * 0.48; // Уменьшили с 0.5 до 0.48
+                const actualSize = size * 4.8; 
+                const adjustedTime = time * 0.48; 
                 const speed = (actualSize / (adjustedTime / 1000));
                 
-                const adjustedSpeed = speed * 4.2; // Увеличили с 3.8 до 4.2
+                const adjustedSpeed = speed * 4.2; 
                 bestSpeed = Math.max(bestSpeed, adjustedSpeed);
 
                 await new Promise(resolve => setTimeout(resolve, 250));
@@ -244,7 +298,7 @@ export const useSpeedTest = () => {
             }
         }
 
-        return bestSpeed * 2.0; // Увеличили с 1.8 до 2.0
+        return bestSpeed * 2.0; 
     };
 
     const retryOperation = async (operation: () => Promise<any>, maxRetries = 3) => {
@@ -260,7 +314,6 @@ export const useSpeedTest = () => {
 
     const warmupConnection = async (serverUrl: string): Promise<void> => {
         try {
-            // Делаем несколько пингов для разогрева соединения
             for (let i = 0; i < 5; i++) {
                 await fetch(`${serverUrl}/speedtest/ping`);
             }
