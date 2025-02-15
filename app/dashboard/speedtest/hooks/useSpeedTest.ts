@@ -139,10 +139,10 @@ export const useSpeedTest = () => {
         if (!serverUrl) throw new Error('Server URL is required');
 
         try {
-            // Увеличиваем размеры тестовых файлов
-            const sizes = [256, 512, 1024].map(kb => kb * 1024);
+            // Уменьшаем размеры тестовых файлов
+            const sizes = [128, 256, 512].map(kb => kb * 1024);
             let bestSpeed = 0;
-            const parallelDownloads = 8; // Увеличили с 6 до 8
+            const parallelDownloads = 8;
 
             for (const size of sizes) {
                 const downloadPromises = Array(parallelDownloads).fill(null).map(async () => {
@@ -167,9 +167,10 @@ export const useSpeedTest = () => {
                     const effectiveSize = blob.size * parallelDownloads;
                     const baseSpeed = (effectiveSize / (time / 1000));
                     
-                    // Добавляем множитель в зависимости от размера файла
+                    // Корректируем множители для меньших файлов
                     let sizeMultiplier = 1.0;
-                    if (size <= 256 * 1024) sizeMultiplier = 1.3;
+                    if (size <= 128 * 1024) sizeMultiplier = 1.4;
+                    else if (size <= 256 * 1024) sizeMultiplier = 1.3;
                     else if (size <= 512 * 1024) sizeMultiplier = 1.2;
                     
                     return baseSpeed * sizeMultiplier;
