@@ -12,21 +12,5 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
 
-  backend:
-    build:
-      context: ./BETest
-      dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-rychlostnet}
-    depends_on:
-      - postgres
-    volumes:
-      - /root/.config/speedtest:/root/.config/speedtest
-    # Добавляем перезапуск при ошибках
-    restart: unless-stopped
-
 volumes:
   postgres_data: null
