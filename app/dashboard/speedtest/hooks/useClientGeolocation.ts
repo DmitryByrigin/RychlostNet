@@ -4,110 +4,149 @@ import { GeolocationData } from '../types/geolocation';
 export const useClientGeolocation = () => {
     const [clientLocation, setClientLocation] = useState<GeolocationData | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [locationConsent, setLocationConsent] = useState<boolean | null>(null);
 
-    const getClientLocation = async () => {
+    useEffect(() => {
+        const cachedLocation = localStorage.getItem('cachedLocation');
+        const cacheTimestamp = localStorage.getItem('locationCacheTimestamp');
+        const CACHE_DURATION = 30 * 60 * 1000; // 30 минут
+
+        if (cachedLocation && cacheTimestamp) {
+            const isValidCache = Date.now() - Number(cacheTimestamp) < CACHE_DURATION;
+            if (isValidCache) {
+                setClientLocation(JSON.parse(cachedLocation));
+                return;
+            }
+        }
+
+        getClientLocation();
+    }, []);
+
+    const getLocationDetails = async (latitude: number, longitude: number): Promise<any> => {
         try {
-            // Сначала получаем геолокацию через браузерный API
-            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    reject(new Error('Geolocation is not supported by your browser'));
-                    return;
-                }
-                navigator.geolocation.getCurrentPosition(resolve, reject);
-            });
-
-            // Теперь делаем запрос к ipdata.co с координатами
-            console.log('Trying primary service (ipdata.co)...');
-            const response = await fetch(
-                `https://api.ipdata.co/?api-key=63c4dfaccc7a5385fa75956c7d58ae869791a2a2a204c7f21f5034f8`,
+            // Получаем информацию о местоположении через OpenStreetMap
+            const osmResponse = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
                 {
                     headers: {
-                        'Accept': 'application/json'
+                        'Accept-Language': 'sk',
+                        'User-Agent': 'RychlostNet Speed Test'
                     }
                 }
             );
 
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Successfully received data from ipdata.co');
-
-                if (data && data.city && data.region && data.country_name) {
-                    setClientLocation({
-                        ip: data.ip,
-                        city: data.city,
-                        region: data.region,
-                        country: data.country_name,
-                        org: data.asn?.name || 'Unknown Organization',
-                        lat: position.coords.latitude, // Используем координаты из браузера
-                        lon: position.coords.longitude, // Используем координаты из браузера
-                        servers: []
-                    });
-                    return;
-                }
+            if (!osmResponse.ok) {
+                throw new Error(`Ошибка получения данных о местоположении: ${osmResponse.status}`);
             }
 
-            // Если первичный сервис не сработал, используем резервный
-            console.log('Using fallback service (ipapi.co)...');
-            const fallbackResponse = await fetch('https://ipapi.co/json/', {
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
+            const osmData = await osmResponse.json();
 
-            if (!fallbackResponse.ok) {
-                throw new Error(`ipapi.co returned status ${fallbackResponse.status}`);
+            // Получаем информацию о провайдере через ipapi.co
+            const ipapiResponse = await fetch('https://ipapi.co/json/');
+            if (!ipapiResponse.ok) {
+                throw new Error(`Ошибка получения данных о провайдере: ${ipapiResponse.status}`);
             }
 
-            const fallbackData = await fallbackResponse.json();
-            
-            if (!fallbackData.ip || !fallbackData.city || !fallbackData.region || !fallbackData.country_name) {
-                throw new Error('Incomplete data received from ipapi.co');
+            const ipapiData = await ipapiResponse.json();
+
+            return {
+                city: osmData.address.city || osmData.address.town || osmData.address.village || 'Неизвестно',
+                region: osmData.address.state || osmData.address.region || 'Неизвестно',
+                country: osmData.address.country || 'Неизвестно',
+                ip: ipapiData.ip,
+                org: ipapiData.org || 'Неизвестный провайдер'
+            };
+        } catch (error) {
+            console.warn('Ошибка получения деталей местоположения:', error);
+            return null;
+        }
+    };
+
+    const getClientLocation = async () => {
+        try {
+            if (!navigator.geolocation) {
+                throw new Error('Геолокация не поддерживается вашим браузером');
             }
 
-            setClientLocation({
-                ip: fallbackData.ip,
-                city: fallbackData.city,
-                region: fallbackData.region,
-                country: fallbackData.country_name,
-                org: fallbackData.org || 'Unknown Organization',
-                lat: position.coords.latitude, // Используем координаты из браузера
-                lon: position.coords.longitude, // Используем координаты из браузера
-                servers: []
-            });
-        } catch (err) {
-            // Если не удалось получить геолокацию через браузер, пробуем получить через IP
-            try {
-                const response = await fetch('https://ipapi.co/json/', {
-                    headers: {
-                        'Accept': 'application/json'
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        setLocationConsent(true);
+                        resolve(pos);
+                    },
+                    (err) => {
+                        setLocationConsent(false);
+                        reject(err);
+                    },
+                    { 
+                        enableHighAccuracy: false,
+                        timeout: 10000,
+                        maximumAge: 300000 // 5 минут
                     }
-                });
+                );
+            });
 
+            const locationDetails = await getLocationDetails(
+                position.coords.latitude,
+                position.coords.longitude
+            );
+
+            if (locationDetails) {
+                const locationData = {
+                    ip: locationDetails.ip,
+                    city: locationDetails.city,
+                    region: locationDetails.region,
+                    country: locationDetails.country,
+                    org: locationDetails.org,
+                    lat: position.coords.latitude,
+                    lon: position.coords.longitude,
+                    servers: []
+                };
+
+                localStorage.setItem('cachedLocation', JSON.stringify(locationData));
+                localStorage.setItem('locationCacheTimestamp', Date.now().toString());
+
+                setClientLocation(locationData);
+                return;
+            }
+
+            throw new Error('Не удалось получить детали местоположения');
+        } catch (err) {
+            console.warn('Ошибка геолокации браузера, используем резервный метод:', err);
+            
+            try {
+                const response = await fetch('https://ipapi.co/json/');
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`Ошибка HTTP: ${response.status}`);
                 }
 
                 const data = await response.json();
-                setClientLocation({
+                const locationData = {
                     ip: data.ip,
                     city: data.city,
                     region: data.region,
                     country: data.country_name,
-                    org: data.org || 'Unknown Organization',
+                    org: data.org || 'Неизвестный провайдер',
                     lat: data.latitude,
                     lon: data.longitude,
                     servers: []
-                });
+                };
+
+                localStorage.setItem('cachedLocation', JSON.stringify(locationData));
+                localStorage.setItem('locationCacheTimestamp', Date.now().toString());
+
+                setClientLocation(locationData);
             } catch (fallbackErr) {
-                setError(fallbackErr instanceof Error ? fallbackErr.message : 'Failed to get location');
-                console.error('Error getting client location:', fallbackErr);
+                setError(fallbackErr instanceof Error ? fallbackErr.message : 'Не удалось получить местоположение');
+                console.error('Ошибка получения местоположения:', fallbackErr);
             }
         }
     };
 
-    useEffect(() => {
-        getClientLocation();
-    }, []);
-
-    return { clientLocation, error };
+    return { 
+        clientLocation, 
+        error,
+        locationConsent,
+        refreshLocation: getClientLocation 
+    };
 };
