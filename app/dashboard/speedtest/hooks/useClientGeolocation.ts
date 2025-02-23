@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { GeolocationData } from '../types/geolocation';
+import { GeolocationService } from '../services/geolocation.service';
 
 export const useClientGeolocation = () => {
     const [clientLocation, setClientLocation] = useState<GeolocationData | null>(null);
@@ -22,131 +23,33 @@ export const useClientGeolocation = () => {
         getClientLocation();
     }, []);
 
-    const getLocationDetails = async (latitude: number, longitude: number): Promise<any> => {
-        try {
-            // Получаем информацию о местоположении через OpenStreetMap
-            const osmResponse = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-                {
-                    headers: {
-                        'Accept-Language': 'sk',
-                        'User-Agent': 'RychlostNet Speed Test'
-                    }
-                }
-            );
-
-            if (!osmResponse.ok) {
-                throw new Error(`Ошибка получения данных о местоположении: ${osmResponse.status}`);
-            }
-
-            const osmData = await osmResponse.json();
-
-            // Получаем информацию о провайдере через ipapi.co
-            const ipapiResponse = await fetch('https://ipapi.co/json/');
-            if (!ipapiResponse.ok) {
-                throw new Error(`Ошибка получения данных о провайдере: ${ipapiResponse.status}`);
-            }
-
-            const ipapiData = await ipapiResponse.json();
-
-            return {
-                city: osmData.address.city || osmData.address.town || osmData.address.village || 'Неизвестно',
-                region: osmData.address.state || osmData.address.region || 'Неизвестно',
-                country: osmData.address.country || 'Неизвестно',
-                ip: ipapiData.ip,
-                org: ipapiData.org || 'Неизвестный провайдер'
-            };
-        } catch (error) {
-            console.warn('Ошибка получения деталей местоположения:', error);
-            return null;
-        }
-    };
-
     const getClientLocation = async () => {
         try {
-            if (!navigator.geolocation) {
-                throw new Error('Геолокация не поддерживается вашим браузером');
-            }
-
-            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        setLocationConsent(true);
-                        resolve(pos);
-                    },
-                    (err) => {
-                        setLocationConsent(false);
-                        reject(err);
-                    },
-                    { 
-                        enableHighAccuracy: false,
-                        timeout: 10000,
-                        maximumAge: 300000 // 5 минут
-                    }
-                );
-            });
-
-            const locationDetails = await getLocationDetails(
-                position.coords.latitude,
-                position.coords.longitude
-            );
-
-            if (locationDetails) {
-                const locationData = {
-                    ip: locationDetails.ip,
-                    city: locationDetails.city,
-                    region: locationDetails.region,
-                    country: locationDetails.country,
-                    org: locationDetails.org,
-                    lat: position.coords.latitude,
-                    lon: position.coords.longitude,
-                    servers: []
-                };
-
-                localStorage.setItem('cachedLocation', JSON.stringify(locationData));
-                localStorage.setItem('locationCacheTimestamp', Date.now().toString());
-
-                setClientLocation(locationData);
-                return;
-            }
-
-            throw new Error('Не удалось получить детали местоположения');
-        } catch (err) {
-            console.warn('Ошибка геолокации браузера, используем резервный метод:', err);
+            const locationData = await GeolocationService.getClientLocation();
             
-            try {
-                const response = await fetch('https://ipapi.co/json/');
-                if (!response.ok) {
-                    throw new Error(`Ошибка HTTP: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const locationData = {
-                    ip: data.ip,
-                    city: data.city,
-                    region: data.region,
-                    country: data.country_name,
-                    org: data.org || 'Неизвестный провайдер',
-                    lat: data.latitude,
-                    lon: data.longitude,
-                    servers: []
-                };
-
-                localStorage.setItem('cachedLocation', JSON.stringify(locationData));
-                localStorage.setItem('locationCacheTimestamp', Date.now().toString());
-
-                setClientLocation(locationData);
-            } catch (fallbackErr) {
-                setError(fallbackErr instanceof Error ? fallbackErr.message : 'Не удалось получить местоположение');
-                console.error('Ошибка получения местоположения:', fallbackErr);
+            // Кэшируем результат
+            localStorage.setItem('cachedLocation', JSON.stringify(locationData));
+            localStorage.setItem('locationCacheTimestamp', Date.now().toString());
+            
+            setClientLocation(locationData);
+            setError(null);
+        } catch (error) {
+            console.error('Ошибка при получении геолокации:', error);
+            setError(error instanceof Error ? error.message : 'Неизвестная ошибка');
+            
+            // В случае ошибки используем кэшированные данные, если они есть
+            const cachedLocation = localStorage.getItem('cachedLocation');
+            if (cachedLocation) {
+                setClientLocation(JSON.parse(cachedLocation));
             }
         }
     };
 
-    return { 
-        clientLocation, 
+    return {
+        clientLocation,
         error,
         locationConsent,
-        refreshLocation: getClientLocation 
+        setLocationConsent,
+        refreshLocation: getClientLocation
     };
 };

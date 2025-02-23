@@ -59,12 +59,12 @@ const ServerService: React.FC<ServerServiceProps> = ({
         label: serverDisplayName(server),
     }));
 
-    console.log('Current state:', {
-        selectedServer,
-        localFilteredServers,
-        serverOptions,
-        currentValue: selectedServer ? serverDisplayName(selectedServer) : null
-    });
+    // console.log('Current state:', {
+    //     selectedServer,
+    //     localFilteredServers,
+    //     serverOptions,
+    //     currentValue: selectedServer ? serverDisplayName(selectedServer) : null
+    // });
 
     return (
         <UnstyledButton className={classes.item} disabled={localFilteredServers.length === 0}>
