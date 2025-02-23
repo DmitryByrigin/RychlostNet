@@ -5,7 +5,7 @@ FROM node:18-alpine AS deps
 WORKDIR /app
 
 # Установка зависимостей для сборки
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat python3 make g++
 
 # Копируем файлы для установки зависимостей
 COPY package.json ./
@@ -25,6 +25,8 @@ COPY . .
 # Отключаем телеметрию Next.js и собираем приложение
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV NEXT_PUBLIC_API_URL=http://localhost:3001
+ENV NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
 
 # Генерируем production build
 RUN npm run build
@@ -39,6 +41,8 @@ RUN apk add --no-cache libc6-compat
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=http://localhost:3001
+ENV NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
 
 # Создаем пользователя для запуска приложения
 RUN addgroup --system --gid 1001 nodejs && \
