@@ -25,8 +25,8 @@ COPY . .
 # Отключаем телеметрию Next.js и собираем приложение
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-ENV NEXT_PUBLIC_API_URL=http://localhost:3001
-ENV NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+ENV NEXT_PUBLIC_API_SERVERS=https://777.archivly.com
+ENV NEXTAUTH_URL=https://odmeraj-si.archivly.com
 
 # Генерируем production build
 RUN npm run build
@@ -41,8 +41,8 @@ RUN apk add --no-cache libc6-compat
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_PUBLIC_API_URL=http://localhost:3001
-ENV NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+ENV NEXT_PUBLIC_API_SERVERS=https://777.archivly.com
+ENV NEXTAUTH_URL=https://odmeraj-si.archivly.com
 
 # Создаем пользователя для запуска приложения
 RUN addgroup --system --gid 1001 nodejs && \

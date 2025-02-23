@@ -18,7 +18,7 @@ import {
 import { uploadData, runParallelUpload, runUploadTest } from '../utils/upload.utils';
 
 // Используем переменную окружения для URL сервера
-const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_API_SERVERS;
 
 export const useWebRTCSpeedTest = () => {
     const [isConnecting, setIsConnecting] = useState(false);
