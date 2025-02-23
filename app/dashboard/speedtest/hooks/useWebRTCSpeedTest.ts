@@ -1,0 +1,346 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Manager, Socket } from 'socket.io-client';
+import { 
+    WebRTCSpeedTestResult, 
+    WebRTCError, 
+    ConnectionEstablishedData,
+    RTCStates 
+} from '../types/webrtc.types';
+import { 
+    createPeerConnection,
+    logRTCState,
+    handleIceCandidate 
+} from '../utils/webrtc.utils';
+import { 
+    runDownloadTest,
+    measureLatency 
+} from '../utils/speedtest.utils';
+import { uploadData, runParallelUpload, runUploadTest } from '../utils/upload.utils';
+
+// Используем переменную окружения для URL сервера
+const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+export const useWebRTCSpeedTest = () => {
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isDataChannelReady, setIsDataChannelReady] = useState(false);
+    const [connectionState, setConnectionState] = useState<RTCStates>(RTCStates.NEW);
+    
+    const socketRef = useRef<Socket | null>(null);
+    const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+    const dataChannelRef = useRef<RTCDataChannel | null>(null);
+    const isInitiatorRef = useRef(false);
+    const reconnectAttempts = useRef(0);
+    const maxReconnectAttempts = 3;
+    const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+
+    // Добавляем методы для проверки состояния
+    const isConnected = useCallback(() => {
+        return connectionState === RTCStates.CONNECTED;
+    }, [connectionState]);
+
+    const isDataChannelReadyState = useCallback(() => {
+        const dataChannel = dataChannelRef.current;
+        return dataChannel !== null && dataChannel.readyState === 'open';
+    }, []);
+
+    const logState = useCallback(() => {
+        return logRTCState(
+            peerConnectionRef.current,
+            dataChannelRef.current,
+            socketRef.current,
+            pendingIceCandidatesRef.current,
+            isInitiatorRef.current
+        );
+    }, []);
+
+    const setupDataChannel = useCallback((dataChannel: RTCDataChannel) => {
+        console.log('Setting up data channel:', dataChannel.label);
+        
+        dataChannel.onopen = () => {
+            console.log('Data channel opened:', {
+                label: dataChannel.label,
+                id: dataChannel.id,
+                state: dataChannel.readyState,
+                bufferedAmount: dataChannel.bufferedAmount,
+                maxRetransmits: dataChannel.maxRetransmits,
+                ordered: dataChannel.ordered,
+                protocol: dataChannel.protocol
+            });
+            setIsDataChannelReady(true);
+            logState();
+        };
+
+        dataChannel.onclose = () => {
+            console.log('Data channel closed:', {
+                label: dataChannel.label,
+                id: dataChannel.id,
+                state: dataChannel.readyState
+            });
+            setIsDataChannelReady(false);
+            logState();
+        };
+
+        dataChannel.onerror = (error) => {
+            console.error('Data channel error:', {
+                label: dataChannel.label,
+                id: dataChannel.id,
+                state: dataChannel.readyState,
+                error
+            });
+            setError('Data channel error');
+            logState();
+        };
+
+        dataChannelRef.current = dataChannel;
+    }, [logState]);
+
+    const initializeWebRTC = useCallback(async () => {
+        try {
+            console.log('Initializing WebRTC with server:', SOCKET_SERVER_URL);
+            setIsConnecting(true);
+            setConnectionState(RTCStates.CONNECTING);
+
+            // Create Socket.IO connection
+            const manager = new Manager(SOCKET_SERVER_URL, {
+                path: '/socket.io',
+                transports: ['polling', 'websocket'],
+                reconnection: true,
+                reconnectionAttempts: maxReconnectAttempts,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                timeout: 45000,
+                autoConnect: false,
+                withCredentials: true
+            });
+
+            const socket = manager.socket('/speedtest');
+            socketRef.current = socket;
+
+            // Create WebRTC connection
+            const pc = createPeerConnection();
+            peerConnectionRef.current = pc;
+
+            // Socket.IO event handlers
+            socket.on('connect', async () => {
+                console.log('Socket.io connected:', socket.id);
+                setError(null);
+                setIsConnecting(false);
+                reconnectAttempts.current = 0;
+
+                try {
+                    console.log('Creating data channel as initiator');
+                    const channel = pc.createDataChannel('speedtest', {
+                        ordered: true,
+                        maxRetransmits: 3
+                    });
+                    setupDataChannel(channel);
+
+                    console.log('Creating offer');
+                    const offer = await pc.createOffer({
+                        offerToReceiveAudio: false,
+                        offerToReceiveVideo: false
+                    });
+
+                    console.log('Setting local description:', offer.type);
+                    await pc.setLocalDescription(offer);
+
+                    console.log('Sending offer to peer');
+                    socket.emit('offer', offer);
+                } catch (error) {
+                    console.error('Error creating data channel or offer:', error);
+                    setError('Failed to create WebRTC connection');
+                    setConnectionState(RTCStates.FAILED);
+                }
+                logState();
+            });
+
+            socket.on('answer', async (answer: RTCSessionDescriptionInit) => {
+                try {
+                    console.log('Received answer:', answer.type);
+                    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                    console.log('Set remote description successfully');
+                } catch (error) {
+                    console.error('Error setting remote description:', error);
+                    setError('Failed to establish WebRTC connection');
+                    setConnectionState(RTCStates.FAILED);
+                }
+                logState();
+            });
+
+            socket.on('ice-candidate', async (data: { candidate: RTCIceCandidateInit }) => {
+                try {
+                    if (data.candidate) {
+                        console.log('Received ICE candidate from server');
+                        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        console.log('Added ICE candidate successfully');
+                    }
+                } catch (error) {
+                    console.error('Error adding received ICE candidate:', error);
+                }
+                logState();
+            });
+
+            socket.on('disconnect', (reason: string) => {
+                console.log('Socket.io disconnected:', reason);
+                setIsConnecting(false);
+                setIsDataChannelReady(false);
+                setConnectionState(RTCStates.DISCONNECTED);
+                logState();
+            });
+
+            // WebRTC event handlers
+            pc.onicecandidate = (event) => handleIceCandidate(event, socket);
+            
+            pc.onconnectionstatechange = () => {
+                console.log('Connection state changed:', pc.connectionState);
+                setConnectionState(pc.connectionState as RTCStates);
+                logState();
+            };
+
+            // Connect socket
+            socket.connect();
+
+        } catch (error) {
+            console.error('Error initializing WebRTC:', error);
+            setError('Failed to initialize WebRTC');
+            setConnectionState(RTCStates.FAILED);
+            setIsConnecting(false);
+            throw error;
+        }
+    }, [setupDataChannel, logState]);
+
+    const resetConnection = useCallback(async () => {
+        console.log('Resetting WebRTC connection...');
+        
+        // Clean up existing data channel
+        if (dataChannelRef.current) {
+            dataChannelRef.current.close();
+            dataChannelRef.current = null;
+        }
+
+        // Clean up existing peer connection
+        if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+            peerConnectionRef.current = null;
+        }
+
+        // Clean up socket connection
+        if (socketRef.current) {
+            socketRef.current.close();
+            socketRef.current = null;
+        }
+
+        // Reset states
+        setIsConnecting(false);
+        setIsDataChannelReady(false);
+        setConnectionState(RTCStates.NEW);
+        setError(null);
+        
+        // Wait a bit before reconnecting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Reinitialize connection
+        await initializeWebRTC();
+    }, [initializeWebRTC]);
+
+    // Initialize WebRTC connection
+    useEffect(() => {
+        initializeWebRTC().catch(console.error);
+
+        return () => {
+            // Cleanup on unmount
+            if (dataChannelRef.current) {
+                dataChannelRef.current.close();
+            }
+            if (peerConnectionRef.current) {
+                peerConnectionRef.current.close();
+            }
+            if (socketRef.current) {
+                socketRef.current.close();
+            }
+        };
+    }, [initializeWebRTC]);
+
+    const runSpeedTest = useCallback(async (type: 'download' | 'upload', size?: number): Promise<number> => {
+        const dataChannel = dataChannelRef.current;
+        if (!dataChannel || dataChannel.readyState !== 'open') {
+            throw new Error('Data channel not ready');
+        }
+
+        switch (type) {
+            case 'download':
+                return runDownloadTest(dataChannel, size);
+            case 'upload':
+                return runUploadTest(dataChannel, size);
+            default:
+                throw new Error('Invalid test type');
+        }
+    }, []);
+
+    const measurePing = useCallback(async (samples?: number): Promise<number> => {
+        const dataChannel = dataChannelRef.current;
+        if (!dataChannel || dataChannel.readyState !== 'open') {
+            throw new Error('Data channel not ready');
+        }
+
+        return measureLatency(dataChannel, samples);
+    }, []);
+
+    const measureSpeed = useCallback(async (): Promise<WebRTCSpeedTestResult> => {
+        if (!isDataChannelReadyState() || !dataChannelRef.current) {
+            console.log('Data channel not ready, attempting reset...');
+            await resetConnection();
+            
+            // Wait for connection to be ready
+            let attempts = 0;
+            while (!isDataChannelReadyState() && attempts < 10) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                attempts++;
+            }
+            
+            if (!isDataChannelReadyState()) {
+                throw new Error('Failed to establish WebRTC connection');
+            }
+        }
+
+        try {
+            const ping = await measureLatency(dataChannelRef.current!);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const download = await runDownloadTest(dataChannelRef.current!, undefined);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const upload = await runUploadTest(dataChannelRef.current!, undefined);
+
+            // Reset connection after test completion
+            setTimeout(() => {
+                resetConnection().catch(console.error);
+            }, 1000);
+
+            return {
+                ping,
+                download,
+                upload
+            };
+        } catch (error) {
+            console.error('Error during speed measurement:', error);
+            // Attempt to reset connection on error
+            resetConnection().catch(console.error);
+            throw error;
+        }
+    }, [isDataChannelReadyState, resetConnection]);
+
+    return {
+        isConnecting,
+        isDataChannelReady,
+        connectionState,
+        error,
+        measureLatency: measurePing,
+        isConnected: () => connectionState === RTCStates.CONNECTED,
+        isDataChannelReadyState: () => isDataChannelReady,
+        measureSpeed,
+        runDownloadTest: (size?: number) => runSpeedTest('download', size),
+        runUploadTest: (size?: number) => runSpeedTest('upload', size)
+    };
+};
