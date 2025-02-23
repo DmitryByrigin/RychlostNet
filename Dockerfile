@@ -8,10 +8,10 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
 # Копируем файлы для установки зависимостей
-COPY package.json package-lock.json ./
+COPY package.json ./
 
 # Устанавливаем зависимости
-RUN npm ci
+RUN npm install
 
 # Stage 2: Builder
 FROM node:18-alpine AS builder
@@ -47,7 +47,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 
 # Устанавливаем только production зависимости
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Копируем .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
