@@ -470,23 +470,41 @@ export const measureLatency = async (dataChannel: RTCDataChannel, samples: numbe
 
 const sendPing = (dataChannel: RTCDataChannel): Promise<number> => {
     return new Promise<number>((resolve, reject) => {
-        const startTime = performance.now(); // Use high-precision timer
+        if (dataChannel.readyState !== 'open') {
+            console.error('Data channel not open:', dataChannel.readyState);
+            return reject(new Error(`Data channel not ready: ${dataChannel.readyState}`));
+        }
+
+        const startTime = performance.now();
+        console.log('Sending ping message...', {
+            channelState: dataChannel.readyState,
+            bufferedAmount: dataChannel.bufferedAmount,
+            label: dataChannel.label
+        });
         
         const timeout = setTimeout(() => {
+            console.log('Ping timeout, no response received');
             cleanup();
             reject(new Error('Ping timeout after 5 seconds'));
         }, TEST_CONFIG.TIMEOUTS.CHUNK);
 
         const handleMessage = (event: MessageEvent) => {
+            console.log('Received message:', event.data);
             try {
                 if (typeof event.data === 'string') {
                     const message = JSON.parse(event.data);
-                    if (message.type === 'pong' || message.type === 'ping_response') {
+                    console.log('Parsed message:', message);
+                    if (message.type === 'pong' && message.timestamp) {
                         const endTime = performance.now();
                         const pingTime = endTime - startTime;
+                        console.log('Received pong, ping time:', pingTime);
                         cleanup();
                         resolve(pingTime);
+                    } else {
+                        console.log('Ignoring non-pong message:', message);
                     }
+                } else {
+                    console.log('Ignoring non-string message:', typeof event.data);
                 }
             } catch (error) {
                 console.error('Error handling ping response:', error);
@@ -496,17 +514,20 @@ const sendPing = (dataChannel: RTCDataChannel): Promise<number> => {
         };
 
         const cleanup = () => {
+            console.log('Cleaning up ping handlers');
             clearTimeout(timeout);
             dataChannel.removeEventListener('message', handleMessage);
         };
 
         dataChannel.addEventListener('message', handleMessage);
-        
+
         try {
-            dataChannel.send(JSON.stringify({
+            const pingMessage = {
                 type: 'ping',
-                timestamp: startTime
-            }));
+                timestamp: Date.now()
+            };
+            console.log('Sending ping message:', pingMessage);
+            dataChannel.send(JSON.stringify(pingMessage));
         } catch (error) {
             console.error('Error sending ping:', error);
             cleanup();

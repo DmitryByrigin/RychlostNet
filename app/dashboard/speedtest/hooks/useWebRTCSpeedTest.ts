@@ -68,6 +68,7 @@ export const useWebRTCSpeedTest = () => {
                 protocol: dataChannel.protocol
             });
             setIsDataChannelReady(true);
+            setConnectionState(RTCStates.CONNECTED);
             logState();
         };
 
@@ -78,6 +79,7 @@ export const useWebRTCSpeedTest = () => {
                 state: dataChannel.readyState
             });
             setIsDataChannelReady(false);
+            setConnectionState(RTCStates.CLOSED);
             logState();
         };
 
@@ -89,11 +91,44 @@ export const useWebRTCSpeedTest = () => {
                 error
             });
             setError('Data channel error');
+            setConnectionState(RTCStates.ERROR);
             logState();
         };
 
         dataChannelRef.current = dataChannel;
     }, [logState]);
+
+    const waitForDataChannel = useCallback(async (timeout = 10000) => {
+        if (isDataChannelReadyState()) {
+            return true;
+        }
+
+        return new Promise<boolean>((resolve) => {
+            const startTime = Date.now();
+            const checkInterval = setInterval(() => {
+                if (isDataChannelReadyState()) {
+                    clearInterval(checkInterval);
+                    resolve(true);
+                } else if (Date.now() - startTime > timeout) {
+                    clearInterval(checkInterval);
+                    resolve(false);
+                }
+            }, 100);
+        });
+    }, [isDataChannelReadyState]);
+
+    const measureLatencyWithRetry = useCallback(async (samples: number = 20): Promise<number> => {
+        if (!dataChannelRef.current) {
+            throw new Error('Data channel not initialized');
+        }
+
+        const isReady = await waitForDataChannel();
+        if (!isReady) {
+            throw new Error('Data channel not ready after timeout');
+        }
+
+        return measureLatency(dataChannelRef.current, samples);
+    }, [waitForDataChannel]);
 
     const initializeWebRTC = useCallback(async () => {
         try {
@@ -261,6 +296,54 @@ export const useWebRTCSpeedTest = () => {
         await initializeWebRTC();
     }, [initializeWebRTC]);
 
+    const runSpeedTest = useCallback(async (type: 'download' | 'upload', size?: number): Promise<number> => {
+        const dataChannel = dataChannelRef.current;
+        if (!dataChannel || dataChannel.readyState !== 'open') {
+            throw new Error('Data channel not ready');
+        }
+
+        switch (type) {
+            case 'download':
+                return runDownloadTest(dataChannel, size);
+            case 'upload':
+                return runUploadTest(dataChannel, size);
+            default:
+                throw new Error('Invalid test type');
+        }
+    }, []);
+
+    const measureSpeed = useCallback(async (): Promise<WebRTCSpeedTestResult> => {
+        try {
+            if (!isDataChannelReadyState()) {
+                console.log('Data channel not ready, attempting reset...');
+                await resetConnection();
+                
+                const isReady = await waitForDataChannel();
+                if (!isReady) {
+                    throw new Error('Failed to establish WebRTC connection');
+                }
+            }
+
+            if (!dataChannelRef.current) {
+                throw new Error('Data channel not initialized');
+            }
+
+            const ping = await measureLatencyWithRetry();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const download = await runDownloadTest(dataChannelRef.current!, undefined);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const upload = await runUploadTest(dataChannelRef.current!, undefined);
+
+            return { ping, download, upload };
+        } catch (error) {
+            console.error('Error during speed measurement:', error);
+            resetConnection().catch(console.error);
+            throw error;
+        }
+    }, [isDataChannelReadyState, resetConnection, waitForDataChannel, measureLatencyWithRetry]);
+
     // Initialize WebRTC connection
     useEffect(() => {
         initializeWebRTC().catch(console.error);
@@ -279,81 +362,12 @@ export const useWebRTCSpeedTest = () => {
         };
     }, [initializeWebRTC]);
 
-    const runSpeedTest = useCallback(async (type: 'download' | 'upload', size?: number): Promise<number> => {
-        const dataChannel = dataChannelRef.current;
-        if (!dataChannel || dataChannel.readyState !== 'open') {
-            throw new Error('Data channel not ready');
-        }
-
-        switch (type) {
-            case 'download':
-                return runDownloadTest(dataChannel, size);
-            case 'upload':
-                return runUploadTest(dataChannel, size);
-            default:
-                throw new Error('Invalid test type');
-        }
-    }, []);
-
-    const measurePing = useCallback(async (samples?: number): Promise<number> => {
-        const dataChannel = dataChannelRef.current;
-        if (!dataChannel || dataChannel.readyState !== 'open') {
-            throw new Error('Data channel not ready');
-        }
-
-        return measureLatency(dataChannel, samples);
-    }, []);
-
-    const measureSpeed = useCallback(async (): Promise<WebRTCSpeedTestResult> => {
-        if (!isDataChannelReadyState() || !dataChannelRef.current) {
-            console.log('Data channel not ready, attempting reset...');
-            await resetConnection();
-            
-            // Wait for connection to be ready
-            let attempts = 0;
-            while (!isDataChannelReadyState() && attempts < 10) {
-                await new Promise(resolve => setTimeout(resolve, 500));
-                attempts++;
-            }
-            
-            if (!isDataChannelReadyState()) {
-                throw new Error('Failed to establish WebRTC connection');
-            }
-        }
-
-        try {
-            const ping = await measureLatency(dataChannelRef.current!);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const download = await runDownloadTest(dataChannelRef.current!, undefined);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const upload = await runUploadTest(dataChannelRef.current!, undefined);
-
-            // Reset connection after test completion
-            setTimeout(() => {
-                resetConnection().catch(console.error);
-            }, 1000);
-
-            return {
-                ping,
-                download,
-                upload
-            };
-        } catch (error) {
-            console.error('Error during speed measurement:', error);
-            // Attempt to reset connection on error
-            resetConnection().catch(console.error);
-            throw error;
-        }
-    }, [isDataChannelReadyState, resetConnection]);
-
     return {
         isConnecting,
         isDataChannelReady,
         connectionState,
         error,
-        measureLatency: measurePing,
+        measureLatency: measureLatencyWithRetry,
         isConnected: () => connectionState === RTCStates.CONNECTED,
         isDataChannelReadyState: () => isDataChannelReady,
         measureSpeed,

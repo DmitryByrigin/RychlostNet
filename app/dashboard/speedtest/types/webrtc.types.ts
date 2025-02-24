@@ -21,5 +21,6 @@ export enum RTCStates {
     CONNECTED = 'connected',
     DISCONNECTED = 'disconnected',
     FAILED = 'failed',
-    CLOSED = 'closed'
+    CLOSED = 'closed',
+    ERROR = 'error'
 }
