@@ -1,19 +1,41 @@
 import { RTCStates } from '../types/webrtc.types';
 
 export const createPeerConnection = () => {
-    return new RTCPeerConnection({
+    const configuration: RTCConfiguration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
             { urls: 'stun:stun2.l.google.com:19302' },
             { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' }
+            { urls: 'stun:stun4.l.google.com:19302' },
+            {
+                urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
+                username: 'webrtc',
+                credential: 'webrtc'
+            }
         ],
         iceTransportPolicy: 'all',
         iceCandidatePoolSize: 10,
-        bundlePolicy: 'max-bundle',
-        rtcpMuxPolicy: 'require'
-    });
+        bundlePolicy: 'max-bundle' as RTCBundlePolicy,
+        rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy
+    };
+
+    const pc = new RTCPeerConnection(configuration);
+    
+    // Добавляем обработчики состояния ICE
+    pc.oniceconnectionstatechange = () => {
+        console.log('ICE Connection State:', pc.iceConnectionState);
+        if (pc.iceConnectionState === 'failed') {
+            // Пробуем переподключиться при неудаче
+            pc.restartIce();
+        }
+    };
+
+    pc.onconnectionstatechange = () => {
+        console.log('Connection State:', pc.connectionState);
+    };
+
+    return pc;
 };
 
 export const logRTCState = (

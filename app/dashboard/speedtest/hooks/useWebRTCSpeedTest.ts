@@ -99,7 +99,7 @@ export const useWebRTCSpeedTest = () => {
         try {
             console.log('Initializing WebRTC with server:', SOCKET_SERVER_URL);
             setIsConnecting(true);
-            setConnectionState(RTCStates.CONNECTING);
+            setError(null);
 
             // Create Socket.IO connection
             const manager = new Manager(SOCKET_SERVER_URL, {
@@ -110,16 +110,40 @@ export const useWebRTCSpeedTest = () => {
                 reconnectionDelay: 1000,
                 reconnectionDelayMax: 5000,
                 timeout: 45000,
-                autoConnect: false,
-                withCredentials: true
+                autoConnect: true,
+                withCredentials: true,
+                forceNew: true
             });
 
-            const socket = manager.socket('/speedtest');
+            const socket = manager.socket('/speedtest', {
+                auth: {
+                    origin: window.location.origin
+                }
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Socket connection error:', error);
+                setError('Connection error: ' + error.message);
+            });
+
+            socket.on('connect_timeout', () => {
+                console.error('Socket connection timeout');
+                setError('Connection timeout');
+            });
+
             socketRef.current = socket;
 
-            // Create WebRTC connection
-            const pc = createPeerConnection();
-            peerConnectionRef.current = pc;
+            // Create WebRTC connection with timeout
+            const peerConnection = createPeerConnection();
+            peerConnectionRef.current = peerConnection;
+
+            // Set up data channel with specific options
+            const dataChannel = peerConnection.createDataChannel('speedtest', {
+                ordered: true,
+                maxRetransmits: 3
+            });
+            
+            setupDataChannel(dataChannel);
 
             // Socket.IO event handlers
             socket.on('connect', async () => {
@@ -129,21 +153,14 @@ export const useWebRTCSpeedTest = () => {
                 reconnectAttempts.current = 0;
 
                 try {
-                    console.log('Creating data channel as initiator');
-                    const channel = pc.createDataChannel('speedtest', {
-                        ordered: true,
-                        maxRetransmits: 3
-                    });
-                    setupDataChannel(channel);
-
                     console.log('Creating offer');
-                    const offer = await pc.createOffer({
+                    const offer = await peerConnection.createOffer({
                         offerToReceiveAudio: false,
                         offerToReceiveVideo: false
                     });
 
                     console.log('Setting local description:', offer.type);
-                    await pc.setLocalDescription(offer);
+                    await peerConnection.setLocalDescription(offer);
 
                     console.log('Sending offer to peer');
                     socket.emit('offer', offer);
@@ -158,7 +175,7 @@ export const useWebRTCSpeedTest = () => {
             socket.on('answer', async (answer: RTCSessionDescriptionInit) => {
                 try {
                     console.log('Received answer:', answer.type);
-                    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
                     console.log('Set remote description successfully');
                 } catch (error) {
                     console.error('Error setting remote description:', error);
@@ -172,7 +189,7 @@ export const useWebRTCSpeedTest = () => {
                 try {
                     if (data.candidate) {
                         console.log('Received ICE candidate from server');
-                        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
                         console.log('Added ICE candidate successfully');
                     }
                 } catch (error) {
@@ -190,11 +207,11 @@ export const useWebRTCSpeedTest = () => {
             });
 
             // WebRTC event handlers
-            pc.onicecandidate = (event) => handleIceCandidate(event, socket);
+            peerConnection.onicecandidate = (event) => handleIceCandidate(event, socket);
             
-            pc.onconnectionstatechange = () => {
-                console.log('Connection state changed:', pc.connectionState);
-                setConnectionState(pc.connectionState as RTCStates);
+            peerConnection.onconnectionstatechange = () => {
+                console.log('Connection state changed:', peerConnection.connectionState);
+                setConnectionState(peerConnection.connectionState as RTCStates);
                 logState();
             };
 
