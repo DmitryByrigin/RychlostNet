@@ -496,10 +496,19 @@ const sendPing = (dataChannel: RTCDataChannel): Promise<number> => {
                     console.log('Parsed message:', message);
                     if (message.type === 'pong' && message.timestamp) {
                         const endTime = performance.now();
-                        const pingTime = endTime - startTime;
-                        console.log('Received pong, ping time:', pingTime);
+                        const clientTime = endTime - startTime;
+                        const serverTime = message.serverTime ? message.serverTime - message.timestamp : 0;
+                        const totalTime = clientTime;
+                        
+                        console.log('Received pong:', {
+                            clientTime,
+                            serverTime,
+                            totalTime,
+                            connectionState: message.connectionState
+                        });
+
                         cleanup();
-                        resolve(pingTime);
+                        resolve(totalTime);
                     } else {
                         console.log('Ignoring non-pong message:', message);
                     }
@@ -524,7 +533,7 @@ const sendPing = (dataChannel: RTCDataChannel): Promise<number> => {
         try {
             const pingMessage = {
                 type: 'ping',
-                timestamp: Date.now()
+                timestamp: performance.now()
             };
             console.log('Sending ping message:', pingMessage);
             dataChannel.send(JSON.stringify(pingMessage));
