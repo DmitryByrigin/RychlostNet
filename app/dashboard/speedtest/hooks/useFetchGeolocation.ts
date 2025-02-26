@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { GeolocationData, Server } from '../types/geolocation';
 import { useClientGeolocation } from './useClientGeolocation';
 
@@ -11,7 +11,7 @@ export const useFetchGeolocation = (): {
     const [error, setError] = useState<string | null>(null);
     const { clientLocation } = useClientGeolocation();
 
-    const fetchGeolocationData = async (): Promise<void> => {
+    const fetchGeolocationData = useCallback(async (): Promise<void> => {
         try {
             const response = await fetch('/api/getgeolocation');
             if (!response.ok) {
@@ -59,12 +59,12 @@ export const useFetchGeolocation = (): {
             setError(error instanceof Error ? error.message : 'Failed to fetch geolocation data');
             console.error('Failed to fetch geolocation data', error);
         }
-    };
+    }, [clientLocation]); // Добавляем clientLocation как зависимость для useCallback
 
     useEffect(() => {
         // Запускаем fetchGeolocationData даже если clientLocation еще не получен
         fetchGeolocationData().catch((error) => console.error('Error in useEffect:', error));
-    }, [clientLocation]); // Будет перезапускаться когда clientLocation обновится
+    }, [clientLocation, fetchGeolocationData]); // Теперь все зависимости указаны правильно
 
     return {
         geolocationData,

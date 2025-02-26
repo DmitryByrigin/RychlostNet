@@ -53,8 +53,10 @@ export const createPeerConnection = () => {
             // Проверяем состояние data channel если он существует
             const dataChannels = (pc as any).dataChannels;
             if (dataChannels) {
-                Object.values(dataChannels).forEach((dc: RTCDataChannel) => {
-                    console.log('Data Channel State:', dc.readyState);
+                Object.values(dataChannels).forEach((dc) => {
+                    if (dc && typeof dc === 'object' && 'readyState' in dc) {
+                        console.log('Data Channel State:', (dc as RTCDataChannel).readyState);
+                    }
                 });
             }
         }
