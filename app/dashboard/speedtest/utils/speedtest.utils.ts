@@ -126,8 +126,13 @@ export const measureInitialSpeed = async (dataChannel: RTCDataChannel): Promise<
 export const runDownloadTest = async (dataChannel: RTCDataChannel, size?: number): Promise<number> => {
     // Определяем размер теста на основе начальной скорости соединения
     if (!size) {
-        const initialSpeed = await measureInitialSpeed(dataChannel);
-        size = selectTestSize(initialSpeed);
+        try {
+            const initialSpeed = await measureInitialSpeed(dataChannel);
+            size = selectTestSize(initialSpeed);
+        } catch (error) {
+            console.warn('Failed to measure initial speed:', error);
+            size = TEST_CONFIG.SIZES.SMALL; // Используем минимальный размер при ошибке
+        }
     }
 
     return new Promise((resolve, reject) => {
@@ -141,12 +146,58 @@ export const runDownloadTest = async (dataChannel: RTCDataChannel, size?: number
         let startTime = 0;
         let receivedSize = 0;
         let testComplete = false;
+        let lastDataReceived = Date.now();
         const threadProgress = new Map<number, { received: number, total: number }>();
         let lastProgressUpdate = 0;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
+
+        const checkTimeout = () => {
+            const now = Date.now();
+            if (now - lastDataReceived > TEST_CONFIG.TIMEOUTS.CHUNK) {
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    console.log(`Retrying download test (attempt ${retryCount}/${MAX_RETRIES})`);
+                    restartTest();
+                    return false;
+                }
+                cleanup();
+                reject(new Error(`Download test failed: No data received for ${TEST_CONFIG.TIMEOUTS.CHUNK}ms`));
+                return true;
+            }
+            return false;
+        };
+
+        const restartTest = () => {
+            startTime = 0;
+            receivedSize = 0;
+            threadProgress.clear();
+            lastProgressUpdate = 0;
+            lastDataReceived = Date.now();
+            
+            try {
+                dataChannel.send(JSON.stringify({
+                    type: 'download_test_start',
+                    timestamp: performance.now(),
+                    size,
+                    retry: retryCount
+                }));
+            } catch (error: any) {
+                cleanup();
+                reject(new Error('Failed to start download test: ' + (error?.message || 'Unknown error')));
+            }
+        };
 
         const handleMessage = (event: MessageEvent) => {
             try {
-                if (typeof event.data === 'string') {
+                lastDataReceived = Date.now();
+
+                if (event.data instanceof ArrayBuffer) {
+                    receivedSize += event.data.byteLength;
+                    if (startTime === 0) {
+                        startTime = performance.now();
+                    }
+                } else if (typeof event.data === 'string') {
                     const message = JSON.parse(event.data);
                     
                     switch (message.type) {
@@ -161,19 +212,20 @@ export const runDownloadTest = async (dataChannel: RTCDataChannel, size?: number
                                 total: message.total
                             });
                             
-                            receivedSize = Array.from(threadProgress.values())
+                            const totalReceived = Array.from(threadProgress.values())
                                 .reduce((sum, curr) => sum + curr.received, 0);
                             
-                            // Обновляем прогресс не чаще чем раз в SPEED_MEASUREMENT_INTERVAL
+                            if (totalReceived > receivedSize) {
+                                receivedSize = totalReceived;
+                            }
+                            
                             const now = performance.now();
-                            if (now - lastProgressUpdate >= TEST_CONFIG.TIMEOUTS.CHUNK) {
+                            if (now - lastProgressUpdate >= 1000) {
                                 const currentSpeed = receivedSize * 8 / (1024 * 1024) / ((now - startTime) / 1000);
                                 console.log('Download progress:', {
-                                    threadId,
-                                    threadReceived: message.sent,
-                                    totalReceived: receivedSize,
+                                    receivedSize,
                                     totalSize: size,
-                                    currentSpeed
+                                    currentSpeed: currentSpeed.toFixed(2) + ' Mbps'
                                 });
                                 lastProgressUpdate = now;
                             }
@@ -184,45 +236,57 @@ export const runDownloadTest = async (dataChannel: RTCDataChannel, size?: number
                             const endTime = performance.now();
                             const duration = (endTime - startTime) / 1000;
                             const speed = (receivedSize * 8) / (1024 * 1024) / duration;
-                            console.log('Final download stats:', {
-                                totalReceived: receivedSize,
-                                duration,
-                                speed
-                            });
                             cleanup();
                             resolve(speed);
                             break;
                             
                         case 'error':
-                            console.error('Download error:', message.error);
-                            reject(new Error(message.error || 'Unknown download error'));
-                            cleanup();
+                            if (retryCount < MAX_RETRIES) {
+                                retryCount++;
+                                console.log(`Retrying after error (attempt ${retryCount}/${MAX_RETRIES})`);
+                                restartTest();
+                            } else {
+                                console.error('Download error:', message.error);
+                                cleanup();
+                                reject(new Error(message.error || 'Download test failed'));
+                            }
                             break;
                     }
-                } else if (event.data instanceof ArrayBuffer) {
-                    receivedSize += event.data.byteLength;
-                    if (startTime === 0) {
-                        startTime = performance.now();
-                    }
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Error handling message:', error);
-                reject(error);
-                cleanup();
+                if (retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    console.log(`Retrying after error (attempt ${retryCount}/${MAX_RETRIES})`);
+                    restartTest();
+                } else {
+                    cleanup();
+                    reject(new Error('Download test failed: ' + (error?.message || 'Unknown error')));
+                }
             }
         };
 
         const cleanup = () => {
             dataChannel.removeEventListener('message', handleMessage);
+            if (timeoutInterval) {
+                clearInterval(timeoutInterval);
+            }
         };
 
         dataChannel.addEventListener('message', handleMessage);
 
-        dataChannel.send(JSON.stringify({
-            type: 'download_test_start',
-            timestamp: performance.now(),
-            size
-        }));
+        const timeoutInterval = setInterval(checkTimeout, 1000);
+
+        try {
+            dataChannel.send(JSON.stringify({
+                type: 'download_test_start',
+                timestamp: performance.now(),
+                size
+            }));
+        } catch (error: any) {
+            cleanup();
+            reject(new Error('Failed to start download test: ' + (error?.message || 'Unknown error')));
+        }
 
         setTimeout(() => {
             if (!testComplete) {
@@ -515,10 +579,10 @@ const sendPing = (dataChannel: RTCDataChannel): Promise<number> => {
                 } else {
                     console.log('Ignoring non-string message:', typeof event.data);
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Error handling ping response:', error);
                 cleanup();
-                reject(error);
+                reject(new Error('Failed to send ping: ' + (error?.message || 'Unknown error')));
             }
         };
 
@@ -537,10 +601,10 @@ const sendPing = (dataChannel: RTCDataChannel): Promise<number> => {
             };
             console.log('Sending ping message:', pingMessage);
             dataChannel.send(JSON.stringify(pingMessage));
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error sending ping:', error);
             cleanup();
-            reject(error);
+            reject(new Error('Failed to send ping: ' + (error?.message || 'Unknown error')));
         }
     });
 };
