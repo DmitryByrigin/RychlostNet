@@ -3,45 +3,23 @@ import { RTCStates } from '../types/webrtc.types';
 export const createPeerConnection = () => {
     const configuration: RTCConfiguration = {
         iceServers: [
-            // Google STUN servers
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            
             // Primary ExpressTURN server
             {
                 urls: [
-                    'turn:relay1.expressturn.com:3478',
-                    'turn:relay1.expressturn.com:3478?transport=tcp',
-                    'turn:relay1.expressturn.com:3478?transport=udp'
+                    'turns:relay1.expressturn.com:443',
+                    'turn:relay1.expressturn.com:3478?transport=tcp'
                 ],
                 username: 'efKFYPOIFE0G1M4WS9',
                 credential: 'MYVmxBn931nuOmR3'
             },
-            
             // Backup ExpressTURN server
             {
                 urls: [
-                    'turn:relay1.expressturn.com:3478',
-                    'turn:relay1.expressturn.com:3478?transport=tcp',
-                    'turn:relay1.expressturn.com:3478?transport=udp'
+                    'turns:relay2.expressturn.com:443',
+                    'turn:relay2.expressturn.com:3478?transport=tcp'
                 ],
                 username: 'ef1KCA6XLYJUWBFTOV',
                 credential: 'YBQRD773mviRe9ld'
-            },
-            
-            // Additional backup TURN servers
-            {
-                urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
-                username: 'webrtc',
-                credential: 'webrtc'
-            },
-            {
-                urls: 'turn:numb.viagenie.ca',
-                username: 'webrtc@live.com',
-                credential: 'muazkh'
             }
         ],
         iceTransportPolicy: 'all',
@@ -49,7 +27,6 @@ export const createPeerConnection = () => {
         bundlePolicy: 'max-bundle' as RTCBundlePolicy,
         rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy
     };
-
     const pc = new RTCPeerConnection(configuration);
     
     let reconnectAttempts = 0;
