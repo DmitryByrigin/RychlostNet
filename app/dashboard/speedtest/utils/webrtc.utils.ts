@@ -6,8 +6,11 @@ export const createPeerConnection = () => {
             // Google STUN servers
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
             
-            // ExpressTURN server
+            // Primary ExpressTURN server
             {
                 urls: [
                     'turn:relay1.expressturn.com:3478',
@@ -16,6 +19,29 @@ export const createPeerConnection = () => {
                 ],
                 username: 'efKFYPOIFE0G1M4WS9',
                 credential: 'MYVmxBn931nuOmR3'
+            },
+            
+            // Backup ExpressTURN server
+            {
+                urls: [
+                    'turn:relay1.expressturn.com:3478',
+                    'turn:relay1.expressturn.com:3478?transport=tcp',
+                    'turn:relay1.expressturn.com:3478?transport=udp'
+                ],
+                username: 'ef1KCA6XLYJUWBFTOV',
+                credential: 'YBQRD773mviRe9ld'
+            },
+            
+            // Additional backup TURN servers
+            {
+                urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
+                username: 'webrtc',
+                credential: 'webrtc'
+            },
+            {
+                urls: 'turn:numb.viagenie.ca',
+                username: 'webrtc@live.com',
+                credential: 'muazkh'
             }
         ],
         iceTransportPolicy: 'all',
@@ -26,18 +52,68 @@ export const createPeerConnection = () => {
 
     const pc = new RTCPeerConnection(configuration);
     
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 3;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+
+    const attemptReconnect = () => {
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            console.log(`Attempting reconnection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+            pc.restartIce();
+            
+            // Устанавливаем таймаут для следующей попытки
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+            }
+            reconnectTimeout = setTimeout(() => {
+                if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
+                    attemptReconnect();
+                }
+            }, 5000);
+        } else {
+            console.error('Max reconnection attempts reached');
+            // Здесь можно добавить callback для уведомления о неудачной попытке переподключения
+        }
+    };
+
     // Улучшаем обработку состояний ICE
     pc.oniceconnectionstatechange = () => {
         const state = pc.iceConnectionState;
         console.log('ICE Connection State:', state);
         
-        if (state === 'connected' || state === 'completed') {
-            console.log('ICE Connection established successfully');
-        } else if (state === 'failed') {
-            console.log('ICE Connection failed, attempting restart...');
-            pc.restartIce();
-        } else if (state === 'disconnected') {
-            console.log('ICE Connection disconnected, waiting for reconnection...');
+        switch (state) {
+            case 'connected':
+            case 'completed':
+                console.log('ICE Connection established successfully');
+                reconnectAttempts = 0;
+                if (reconnectTimeout) {
+                    clearTimeout(reconnectTimeout);
+                    reconnectTimeout = null;
+                }
+                break;
+                
+            case 'failed':
+                console.log('ICE Connection failed, attempting restart...');
+                attemptReconnect();
+                break;
+                
+            case 'disconnected':
+                console.log('ICE Connection disconnected, waiting for reconnection...');
+                setTimeout(() => {
+                    if (pc.iceConnectionState === 'disconnected') {
+                        attemptReconnect();
+                    }
+                }, 2000);
+                break;
+                
+            case 'closed':
+                console.log('ICE Connection closed');
+                if (reconnectTimeout) {
+                    clearTimeout(reconnectTimeout);
+                    reconnectTimeout = null;
+                }
+                break;
         }
     };
 
@@ -46,19 +122,37 @@ export const createPeerConnection = () => {
         const state = pc.connectionState;
         console.log('Connection State:', state);
         
-        if (state === 'connected') {
-            console.log('Connection established successfully');
-        } else if (state === 'failed') {
-            console.log('Connection failed, checking data channel state...');
-            // Проверяем состояние data channel если он существует
-            const dataChannels = (pc as any).dataChannels;
-            if (dataChannels) {
-                Object.values(dataChannels).forEach((dc) => {
-                    if (dc && typeof dc === 'object' && 'readyState' in dc) {
-                        console.log('Data Channel State:', (dc as RTCDataChannel).readyState);
-                    }
-                });
-            }
+        switch (state) {
+            case 'connected':
+                console.log('Connection established successfully');
+                break;
+                
+            case 'failed':
+                console.log('Connection failed, checking data channel state...');
+                const dataChannels = (pc as any).dataChannels;
+                if (dataChannels) {
+                    Object.values(dataChannels).forEach((dc) => {
+                        if (dc && typeof dc === 'object' && 'readyState' in dc) {
+                            const dataChannel = dc as RTCDataChannel;
+                            console.log('Data Channel State:', dataChannel.readyState);
+                            console.log('Data Channel Stats:', {
+                                bufferedAmount: dataChannel.bufferedAmount,
+                                maxRetransmits: dataChannel.maxRetransmits,
+                                ordered: dataChannel.ordered,
+                                protocol: dataChannel.protocol
+                            });
+                        }
+                    });
+                }
+                break;
+                
+            case 'disconnected':
+                console.log('Connection disconnected');
+                break;
+                
+            case 'closed':
+                console.log('Connection closed');
+                break;
         }
     };
 
@@ -80,12 +174,19 @@ export const createPeerConnection = () => {
                 address: candidate.address,
                 port: candidate.port,
                 priority: candidate.priority,
-                foundation: candidate.foundation
+                foundation: candidate.foundation,
+                relatedAddress: candidate.relatedAddress,
+                relatedPort: candidate.relatedPort,
+                usernameFragment: candidate.usernameFragment,
+                tcpType: candidate.tcpType
             });
 
             // Добавляем дополнительную информацию для диагностики
             if (candidate.type === 'relay') {
-                console.log('TURN server is being used:', candidate.relatedAddress);
+                console.log('TURN server is being used:', {
+                    relatedAddress: candidate.relatedAddress,
+                    relatedPort: candidate.relatedPort
+                });
             }
         } else {
             console.log('ICE Candidate gathering completed');
