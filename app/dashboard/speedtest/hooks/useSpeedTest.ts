@@ -24,11 +24,39 @@ export const useSpeedTest = () => {
     const testInProgressRef = useRef(false);
     const { geolocationData } = useServer();
     
-    // Загрузка списка серверов
+    // Кэширование данных о серверах
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 минут в миллисекундах
+    
+    // Загрузка списка серверов с кэшированием
     useEffect(() => {
         const loadServers = async () => {
             try {
+                // Проверяем локальный кэш
+                const cacheKey = 'server_info_cache';
+                const cacheStr = localStorage.getItem(cacheKey);
+                
+                if (cacheStr) {
+                    try {
+                        const cache = JSON.parse(cacheStr);
+                        if (Date.now() - cache.timestamp < CACHE_DURATION) {
+                            console.log('Using cached server info in useSpeedTest');
+                            setServers(cache.data);
+                            
+                            // Если сервер еще не выбран, выбираем первый из списка
+                            if (!selectedServer && cache.data.length > 0) {
+                                setSelectedServer(cache.data[0]);
+                            }
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Failed to parse server cache:', e);
+                    }
+                }
+                
+                // Если нет кэша или кэш устарел, делаем запрос
+                console.log('Fetching fresh server info in useSpeedTest...');
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/server-info`);
+                
                 if (response.ok) {
                     const data = await response.json();
                     if (data && data.servers && data.servers.length > 0) {
@@ -46,6 +74,12 @@ export const useSpeedTest = () => {
                                 country: s.country || '',
                                 org: s.sponsor || ''
                             }
+                        }));
+                        
+                        // Кэшируем результат
+                        localStorage.setItem(cacheKey, JSON.stringify({
+                            data: formattedServers,
+                            timestamp: Date.now()
                         }));
                         
                         setServers(formattedServers);
@@ -123,8 +157,8 @@ const testDownload = async (): Promise<number> => {
             throw new Error('Сервер не выбран');
         }
         
-        // Используем корректный URL эндпоинта (размер файла 10MB)
-        const size = 10 * 1024 * 1024;
+        // Используем корректный URL эндпоинта (уменьшенный размер файла 2MB)
+        const size = 1 * 1024 * 1024;
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/download/${size}`);
         
         if (response.ok) {
@@ -153,8 +187,8 @@ const testUpload = async (): Promise<number> => {
             throw new Error('Сервер не выбран');
         }
         
-        // Создаем данные для отправки
-        const dataSize = 1024 * 1024 * 5; // 5 MB
+        // Создаем данные для отправки (уменьшенный размер)
+        const dataSize = 1024 * 1024 * 1; // 1 MB
         const randomData = new ArrayBuffer(dataSize);
         const blob = new Blob([randomData], { type: 'application/octet-stream' });
         

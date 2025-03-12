@@ -21,30 +21,69 @@ export const useServer = () => {
     return context;
 };
 
+// Кэш для хранения данных геолокации и серверов
+const CACHE_DURATION = 5 * 60 * 1000; // 5 минут в миллисекундах
+const geolocationCache: {data: GeolocationData | null, timestamp: number} = {
+    data: null,
+    timestamp: 0
+};
+
+const fetchFromCacheOrNetwork = async <T,>(url: string, cacheKey: string): Promise<T> => {
+    // Проверяем локальное хранилище сначала
+    const cacheStr = localStorage.getItem(cacheKey);
+    if (cacheStr) {
+        try {
+            const cache = JSON.parse(cacheStr);
+            if (Date.now() - cache.timestamp < CACHE_DURATION) {
+                console.log(`Using cached data for ${cacheKey}`);
+                return cache.data;
+            }
+        } catch (e) {
+            console.warn(`Failed to parse cache for ${cacheKey}:`, e);
+        }
+    }
+    
+    // Если нет кэша или кэш устарел, делаем запрос
+    console.log(`Fetching fresh data for ${cacheKey}...`);
+    const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    });
+    
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Кэшируем результат
+    localStorage.setItem(cacheKey, JSON.stringify({
+        data,
+        timestamp: Date.now()
+    }));
+    
+    return data;
+};
+
 export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [geolocationData, setGeolocationData] = useState<GeolocationData | null>(null);
     const [selectedServer, setSelectedServer] = useState<Server | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { clientLocation } = useClientGeolocation();
-
+    
+    // Единый метод для получения данных геолокации с кэшированием
     const fetchGeolocationData = async (): Promise<void> => {
         try {
             setIsLoading(true);
-            console.log('Fetching geolocation data...');
-            const response = await fetch('/api/getgeolocation', {
-                cache: 'no-store',
-                headers: {
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
-                }
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            console.log('Raw geolocation data:', data);
-
+            
+            // Используем кэш или делаем новый запрос
+            const data = await fetchFromCacheOrNetwork<GeolocationData>('/api/getgeolocation', 'geolocation_cache');
+            console.log('Geolocation data:', data);
+            
             // Initialize empty servers array if not present
             if (!data.servers) {
                 console.warn('No servers array in response, initializing empty array');

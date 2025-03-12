@@ -19,11 +19,39 @@ export const useLibreSpeedTest = () => {
     const testInProgressRef = useRef<boolean>(false);
     const { geolocationData } = useServer();
     
-    // Загрузка списка серверов
+    // Кэширование данных о серверах
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 минут в миллисекундах
+    
+    // Загрузка списка серверов с кэшированием
     useEffect(() => {
         const fetchServers = async () => {
             try {
+                // Проверяем локальный кэш
+                const cacheKey = 'server_info_cache';
+                const cacheStr = localStorage.getItem(cacheKey);
+                
+                if (cacheStr) {
+                    try {
+                        const cache = JSON.parse(cacheStr);
+                        if (Date.now() - cache.timestamp < CACHE_DURATION) {
+                            console.log('Using cached server info');
+                            setServers(cache.data);
+                            
+                            // Если сервер еще не выбран, выбираем первый из списка
+                            if (!selectedServer && cache.data.length > 0) {
+                                setSelectedServer(cache.data[0]);
+                            }
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Failed to parse server cache:', e);
+                    }
+                }
+                
+                // Если нет кэша или кэш устарел, делаем запрос
+                console.log('Fetching fresh server info...');
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/server-info`);
+                
                 if (response.ok) {
                     const data = await response.json();
                     
@@ -42,6 +70,12 @@ export const useLibreSpeedTest = () => {
                                 country: s.country || '',
                                 org: s.sponsor || ''
                             }
+                        }));
+                        
+                        // Кэшируем результат
+                        localStorage.setItem(cacheKey, JSON.stringify({
+                            data: formattedServers,
+                            timestamp: Date.now()
                         }));
                         
                         setServers(formattedServers);
@@ -86,8 +120,9 @@ const testDownload = async (): Promise<number> => {
             throw new Error('Сервер не выбран');
         }
         
-        // Используем API LibreSpeed для тестирования загрузки
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/librespeed/garbage?size=10000000`);
+        // Используем API LibreSpeed для тестирования загрузки (размер файла 1MB)
+        const downloadSizeMB = 1; // размер в мегабайтах
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/librespeed/garbage?size=${downloadSizeMB}`);
         
         if (response.ok) {
             const startTime = Date.now();
@@ -96,7 +131,7 @@ const testDownload = async (): Promise<number> => {
             
             // Считаем скорость в Mbps
             const duration = (endTime - startTime) / 1000; // в секундах
-            const sizeInBits = 10000000 * 8; // в битах
+            const sizeInBits = downloadSizeMB * 1024 * 1024 * 8; // в битах (MB -> биты)
             const speedMbps = sizeInBits / 1000000 / duration; // в Мбит/с
             
             return speedMbps;
