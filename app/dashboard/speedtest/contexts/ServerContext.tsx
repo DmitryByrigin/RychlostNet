@@ -6,6 +6,8 @@ interface ServerContextType {
     geolocationData: GeolocationData | null;
     selectedServer: Server | null;
     setCurrentServer: (serverName: string) => void;
+    setSelectedServer: (server: Server | null) => void;
+    servers: Server[];
     isLoading: boolean;
 }
 
@@ -103,7 +105,14 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     return (
-        <ServerContext.Provider value={{ geolocationData, selectedServer, setCurrentServer, isLoading }}>
+        <ServerContext.Provider value={{ 
+            geolocationData, 
+            selectedServer, 
+            setCurrentServer, 
+            setSelectedServer, 
+            servers: geolocationData?.servers || [], 
+            isLoading 
+        }}>
             {children}
         </ServerContext.Provider>
     );

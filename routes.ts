@@ -11,6 +11,7 @@ export const publicRoutes = [
     "/api/generateImage",
     "/api/speedtest",
     "/api/speedtest/cli",
+    "/api/librespeed",
     "/dashboard/speedtest"
 ];
 

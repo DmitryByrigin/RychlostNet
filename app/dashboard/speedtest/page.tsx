@@ -3,22 +3,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Button, Card, Center, Grid, Group, SimpleGrid, Text } from '@mantine/core';
 import { IconArrowsDiff, IconClock, IconDownload, IconUpload, IconServer, IconWifi2 } from "@tabler/icons-react";
-import { useFetchGeolocation } from './hooks/useFetchGeolocation';
-import { useSpeedTest } from './hooks/useSpeedTest';   
+import { useServer, ServerProvider } from './contexts/ServerContext';
+import { useSpeedTest } from './hooks/useSpeedTest';
+import { useLibreSpeedTest } from './hooks/useLibreSpeedTest';
 import { SpeedTestControls } from './components/SpeedTestControls';
 import { SpeedTestResult } from './components/SpeedTestResult';
+import classes from './SpeedTest.module.css';
 import OperatorService from './components/OperatorService';
 import ServerService from './components/ServerService';
 import ConnectionsService from './components/ConnectionsService';
-import classes from './SpeedTest.module.css';
-import DashboardLayout from "@/app/dashboard/DashboardLayout";
-import { ServerProvider, useServer } from './contexts/ServerContext';
 import { Server } from './types/geolocation';
-
-interface GeoLocationServer {
-    name: string;
-    location: { city: string; region: string; country: string };
-}
 
 const SpeedTestContent: React.FC = () => {
     const { geolocationData, selectedServer } = useServer();
@@ -26,42 +20,160 @@ const SpeedTestContent: React.FC = () => {
         uploadSpeed, 
         downloadSpeed, 
         pingStats, 
-        isTesting, 
+        isTesting: isOriginalTesting, 
+        progress: originalProgress,
         generateAndMeasureSpeed, 
-        calibrationFactors,
-        libreSpeedMeasurement,
-        libreSpeedServer
+        libreSpeedResult: originalLibreSpeedResult,
+        servers,
+        selectedServer: testServer,
+        setSelectedServer
     } = useSpeedTest();
+    
+    // Добавляем хук LibreSpeed
+    const { 
+        uploadSpeed: libreUploadSpeed, 
+        downloadSpeed: libreDownloadSpeed, 
+        pingStats: librePingStats, 
+        isTesting: isLibreTesting, 
+        progress: libreProgress,
+        runSpeedTest: runLibreSpeedTest,
+        libreSpeedResult,
+    } = useLibreSpeedTest();
+    
     const [loading, setLoading] = useState(true);
     const [selectedArrow, setSelectedArrow] = useState<'single' | 'multi'>('multi');
     const [filteredServers, setFilteredServers] = useState<Server[]>([]);
+    
+    // Объединенное состояние тестирования
+    const isTesting = isOriginalTesting || isLibreTesting;
+    
+    // Объединенный прогресс (в среднем между двумя тестами)
+    const progress = (originalProgress + libreProgress) / 2;
+    
+    // Скорректированные результаты
+    const [correctedResults, setCorrectedResults] = useState({
+        download: downloadSpeed,
+        upload: uploadSpeed,
+        ping: pingStats
+    });
 
     useEffect(() => {
         if (geolocationData) {
             setLoading(false);
         }
     }, [geolocationData]);
+    
+    // Корректировка результатов на основе LibreSpeed
+    useEffect(() => {
+        if (libreSpeedResult && downloadSpeed && uploadSpeed && pingStats.avg > 0) {
+            // Извлекаем числовые значения из строк с "Mbps"
+            const extractNumber = (str: string) => {
+                const match = str.match(/^([\d.]+)/);
+                return match ? parseFloat(match[1]) : 0;
+            };
+            
+            const originalDownload = extractNumber(downloadSpeed);
+            const originalUpload = extractNumber(uploadSpeed);
+            
+            const libreDownload = libreSpeedResult.download;
+            const libreUpload = libreSpeedResult.upload;
+            
+            // Получаем пинг из LibreSpeed (учитываем, что это может быть объект или число)
+            const librePing = typeof libreSpeedResult.ping === 'object' 
+                ? libreSpeedResult.ping.avg 
+                : libreSpeedResult.ping;
+            
+            // Калибровочные факторы
+            const downloadFactor = 1.15;
+            const uploadFactor = 1.08;
+            const pingFactor = 0.95;
+            
+            // Рассчитываем корректированные значения
+            const correctedDownload = originalDownload * (1 + ((libreDownload / originalDownload - 1) * downloadFactor));
+            const correctedUpload = originalUpload * (1 + ((libreUpload / originalUpload - 1) * uploadFactor));
+            const correctedPingValue = pingStats.avg * (1 + ((librePing / pingStats.avg - 1) * pingFactor));
+            
+            setCorrectedResults({
+                download: `${correctedDownload.toFixed(2)} Mbps`,
+                upload: `${correctedUpload.toFixed(2)} Mbps`,
+                ping: {
+                    min: pingStats.min,
+                    max: pingStats.max,
+                    avg: correctedPingValue,
+                    jitter: pingStats.jitter
+                }
+            });
+        }
+    }, [libreSpeedResult, downloadSpeed, uploadSpeed, pingStats]);
+
+    // Запускаем оба теста последовательно
+    const runBothTests = async () => {
+        try {
+            // Сначала запускаем LibreSpeed тест с помощью Promise
+            const libreTestPromise = runLibreSpeedTest();
+            
+            // Затем запускаем основной тест, но только после завершения первого
+            // Используем setTimeout для небольшой задержки между тестами
+            await libreTestPromise;
+            
+            // Небольшая задержка для стабилизации
+            setTimeout(() => {
+                generateAndMeasureSpeed();
+            }, 1000);
+        } catch (error) {
+            console.error('Error running tests:', error);
+        }
+    };
 
     const networkStats = [
         {
             key: 'Ping',
             value: isTesting
                 ? 'Measuring...'
-                : (typeof pingStats?.avg === 'number' && pingStats.avg > 0 ? `${pingStats.avg.toFixed(2)} ms` : ''),
+                : (typeof libreSpeedResult?.ping?.avg === 'number' && libreSpeedResult.ping.avg > 0 
+                   ? `${libreSpeedResult.ping.avg.toFixed(2)} ms` 
+                   : ''),
             icon: IconArrowsDiff,
         },
         {
             key: 'Download',
-            value: isTesting ? 'Measuring...' : downloadSpeed,
+            value: isTesting ? 'Measuring...' : (libreSpeedResult?.download ? `${libreSpeedResult.download.toFixed(2)} Mbps` : ''),
             icon: IconDownload,
         },
         {
             key: 'Upload',
-            value: isTesting ? 'Measuring...' : uploadSpeed,
+            value: isTesting ? 'Measuring...' : (libreSpeedResult?.upload ? `${libreSpeedResult.upload.toFixed(2)} Mbps` : ''),
             icon: IconUpload,
         },
     ];
 
+    // Массив статистики для собственного теста скорости
+// Массив статистики для собственного теста скорости
+const customSpeedStats = [
+    {
+        key: 'Ping',
+        value: isTesting
+            ? 'Measuring...'
+            : (typeof pingStats?.avg === 'number' && pingStats.avg > 0 
+               ? `${pingStats.avg.toFixed(2)} ms` 
+               : ''),
+        icon: IconArrowsDiff,
+    },
+    {
+        key: 'Download',
+        value: isTesting 
+            ? 'Measuring...' 
+            : (downloadSpeed ? `${parseFloat(downloadSpeed).toFixed(2)} Mbps` : ''),
+        icon: IconDownload,
+    },
+    {
+        key: 'Upload',
+        value: isTesting 
+            ? 'Measuring...' 
+            : (uploadSpeed ? `${parseFloat(uploadSpeed).toFixed(2)} Mbps` : ''),
+        icon: IconUpload,
+    },
+];
 
     const testCLI = async () => {
         await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/cli`, { method: 'GET' }).then(response => response.json()).then(data => console.log(data)).catch(error => console.error(error));
@@ -73,13 +185,13 @@ const SpeedTestContent: React.FC = () => {
                 <Center>
                     <SpeedTestControls
                         isTesting={isTesting}
-                        onStartTest={() => generateAndMeasureSpeed()}
+                        onStartTest={runBothTests}
                         hasAvailableServers={filteredServers.length > 0}
                     />
                 </Center>
                 
                 {/* Информация о калибровке */}
-                {calibrationFactors && (calibrationFactors.download !== 1.0 || calibrationFactors.upload !== 1.0) && (
+                {libreSpeedResult && (
                     <Center>
                         <Text size="xs" color="dimmed" mt="xs">
                             Результаты калиброваны с использованием LibreSpeed
@@ -111,18 +223,14 @@ const SpeedTestContent: React.FC = () => {
                             </>
                         ) : (
                             <>
-                                {geolocationData && (
-                                    <>
-                                        <OperatorService
-                                            ip={geolocationData.ip}
-                                            org={geolocationData.org}
-                                            location={`${geolocationData.city}, ${geolocationData.region}, ${geolocationData.country}`}
-                                        />
-                                        <ServerService
-                                            setFilteredServers={setFilteredServers}
-                                        />
-                                    </>
-                                )}
+                                <OperatorService
+                                    ip={geolocationData?.ip || ""}
+                                    org={geolocationData?.org || "Unknown ISP"}
+                                    location={`${geolocationData?.city || ""}, ${geolocationData?.country || ""}`}
+                                />
+                                <ServerService
+                                    setFilteredServers={setFilteredServers}
+                                />
                                 <ConnectionsService
                                     selectedArrow={selectedArrow}
                                     setSelectedArrow={setSelectedArrow}
@@ -136,62 +244,40 @@ const SpeedTestContent: React.FC = () => {
             <Grid.Col span={12}>
                 <Card withBorder radius="md" className={classes.card}>
                     <Group justify="space-between">
-                        <Text className={classes.title}>Result</Text>
-                        {calibrationFactors && (calibrationFactors.download !== 1.0 || calibrationFactors.upload !== 1.0) && (
-                            <Text size="xs" color="dimmed">
-                                Calibrated with LibreSpeed
-                            </Text>
-                        )}
+                        <div>
+                        <Text size="sm" c="dimmed">LibreSpeed Test Results</Text>
+                        </div>
                     </Group>
-                    <SpeedTestResult networkStats={networkStats} />
+
+                    <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                        {networkStats.map((stat) => (
+                            <Group key={stat.key} className={classes.stat}>
+                                <div className={classes.statIcon}>
+                                    <stat.icon size={24} className={classes.statIconSvg} stroke={1.5} />
+                                </div>
+                                <div>
+                                    <Text className={classes.statName}>{stat.key}</Text>
+                                    <Text className={classes.statValue}>{stat.value}</Text>
+                                </div>
+                            </Group>
+                        ))}
+                    </SimpleGrid>
                 </Card>
             </Grid.Col>
 
             <Grid.Col span={12}>
-                {libreSpeedMeasurement && (
-                    <Card withBorder radius="md" className={classes.card} mt="md">
-                        <Group justify="space-between">
-                            <Text className={classes.title}>Последнее измерение LibreSpeed</Text>
-                        </Group>
-                        <SimpleGrid cols={{ base: 3, md: 3 }} spacing="xs" mt="md">
-                            <div>
-                                <Group>
-                                    <IconDownload className={classes.icon} />
-                                    <Text size="sm" fw={500}>Download</Text>
-                                </Group>
-                                <Text size="md" fw={700} className={classes.value}>
-                                    {libreSpeedMeasurement.downloadSpeed}
-                                </Text>
-                            </div>
-                            <div>
-                                <Group>
-                                    <IconUpload className={classes.icon} />
-                                    <Text size="sm" fw={500}>Upload</Text>
-                                </Group>
-                                <Text size="md" fw={700} className={classes.value}>
-                                    {libreSpeedMeasurement.uploadSpeed}
-                                </Text>
-                            </div>
-                            <div>
-                                <Group>
-                                    <IconArrowsDiff className={classes.icon} />
-                                    <Text size="sm" fw={500}>Ping</Text>
-                                </Group>
-                                <Text size="md" fw={700} className={classes.value}>
-                                    {libreSpeedMeasurement.ping}
-                                </Text>
-                            </div>
-                        </SimpleGrid>
-                        <Text size="xs" color="dimmed" mt="xs" ta="center">
-                            Измерено: {new Date(libreSpeedMeasurement.measuredAt).toLocaleString()}
-                        </Text>
-                        {libreSpeedServer && (
-                            <Text size="xs" color="dimmed" mt="xs" ta="center">
-                                Сервер: {libreSpeedServer.name} | Локация: {libreSpeedServer.location} | Провайдер: {libreSpeedServer.provider}
+                <Card withBorder radius="md" className={classes.card}>
+                    <Group justify="space-between">
+                        <div>
+                            <Text className={classes.title} mt="md">
+                                Speed Test Results
                             </Text>
-                        )}
-                    </Card>
-                )}
+                        </div>
+                    </Group>
+
+                    <SpeedTestResult networkStats={customSpeedStats} />
+
+                </Card>
             </Grid.Col>
         </Grid>
     );
@@ -199,11 +285,9 @@ const SpeedTestContent: React.FC = () => {
 
 const SpeedTest: React.FC = () => {
     return (
-        <DashboardLayout>
-            <ServerProvider>
-                <SpeedTestContent />
-            </ServerProvider>
-        </DashboardLayout>
+        <ServerProvider>
+            <SpeedTestContent />
+        </ServerProvider>
     );
 };
 
