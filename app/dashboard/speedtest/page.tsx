@@ -175,10 +175,6 @@ const customSpeedStats = [
     },
 ];
 
-    const testCLI = async () => {
-        await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/cli`, { method: 'GET' }).then(response => response.json()).then(data => console.log(data)).catch(error => console.error(error));
-    }
-
     return (
         <Grid gutter="md">
             <Grid.Col span={{ base: 12, md: 6 }}>
