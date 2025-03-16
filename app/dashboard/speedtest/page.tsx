@@ -246,22 +246,49 @@ const customSpeedStats = [
                     <Group justify="space-between">
                         <div>
                         <Text size="sm" c="dimmed">LibreSpeed Test Results</Text>
+                        {libreSpeedResult && libreSpeedResult.server && (
+                            <Text size="sm" mt={5} fw={500}>
+                            </Text>
+                        )}
+                        {!libreSpeedResult && selectedServer && (
+                            <Text size="sm" mt={5} fw={500}>
+                                Сервер: {selectedServer.name} 
+                                {selectedServer.location?.city && `, ${selectedServer.location.city}`}
+                                {selectedServer.location?.country && `, ${selectedServer.location.country}`}
+                            </Text>
+                        )}
                         </div>
                     </Group>
 
-                    <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                    <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mt="md">
                         {networkStats.map((stat) => (
                             <Group key={stat.key} className={classes.stat}>
-                                <div className={classes.statIcon}>
+                                <div className={classes.statIcon} style={{ 
+                                    backgroundColor: 
+                                        stat.key === 'Ping' ? '#FF9C00' : 
+                                        stat.key === 'Download' ? '#2EA12E' : '#1F66E5' 
+                                }}>
                                     <stat.icon size={24} className={classes.statIconSvg} stroke={1.5} />
                                 </div>
                                 <div>
                                     <Text className={classes.statName}>{stat.key}</Text>
-                                    <Text className={classes.statValue}>{stat.value}</Text>
+                                    <Text className={classes.statValue} style={{ 
+                                        color: 
+                                            stat.key === 'Ping' ? '#FF9C00' : 
+                                            stat.key === 'Download' ? '#2EA12E' : '#1F66E5',
+                                        fontSize: '1.5rem',
+                                        fontWeight: 700
+                                    }}>{stat.value}</Text>
                                 </div>
                             </Group>
                         ))}
                     </SimpleGrid>
+                    
+                    {libreSpeedResult && libreSpeedResult.server && (
+                        <Text size="xs" mt="md" c="dimmed">
+                            Тест выполнен с использованием внешнего сервера LibreSpeed
+                        </Text>
+                    )}
                 </Card>
             </Grid.Col>
 

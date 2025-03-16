@@ -15,6 +15,9 @@ export const useLibreSpeedTest = () => {
     const [libreSpeedResult, setLibreSpeedResult] = useState<SpeedTestResult | null>(null);
     const [servers, setServers] = useState<LibreSpeedServer[]>([]);
     const [selectedServer, setSelectedServer] = useState<LibreSpeedServer | null>(null);
+    const [isRunning, setIsRunning] = useState(false);
+    const [result, setResult] = useState<SpeedTestResult | null>(null);
+    const [currentTest, setCurrentTest] = useState<string | null>(null);
     
     const testInProgressRef = useRef<boolean>(false);
     const { geolocationData } = useServer();
@@ -22,24 +25,85 @@ export const useLibreSpeedTest = () => {
     // Кэширование данных о серверах
     const CACHE_DURATION = 5 * 60 * 1000; // 5 минут в миллисекундах
     
+    // Константы для использования нашего бэкенда в качестве прокси
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const LIBRESPEED_ENDPOINT = `${API_BASE_URL}/api/speedtest/librespeed`;
+    
+    // Функция для определения ближайшего сервера с приоритетом для Словакии
+    const findBestServer = useCallback((servers: LibreSpeedServer[], userCountry?: string): LibreSpeedServer => {
+        // Если пользователь из Словакии, ищем словацкие серверы или ближайшие в регионе
+        if (userCountry?.toLowerCase() === 'slovakia' || userCountry?.toLowerCase() === 'slovak republic') {
+            // Приоритет 1: Сервер в Словакии
+            const slovakServer = servers.find(s => 
+                s.location?.country?.toLowerCase() === 'slovakia' || 
+                s.location?.country?.toLowerCase() === 'slovak republic' ||
+                s.location?.country?.toLowerCase() === 'slovensko');
+                
+            if (slovakServer) return slovakServer;
+            
+            // Приоритет 2: Сервера в соседних странах
+            const nearbyCountries = ['czech republic', 'austria', 'hungary', 'poland'];
+            const nearbyServer = servers.find(s => 
+                s.location?.country && nearbyCountries.includes(s.location.country.toLowerCase()));
+                
+            if (nearbyServer) return nearbyServer;
+        }
+        
+        // Для других пользователей или если не нашли подходящих серверов для Словакии:
+        // Ищем точное совпадение по стране
+        if (userCountry) {
+            const sameCountryServer = servers.find(s => 
+                s.location?.country?.toLowerCase() === userCountry.toLowerCase());
+                
+            if (sameCountryServer) return sameCountryServer;
+        }
+        
+        // Если нет совпадений, возвращаем первый сервер как дефолтный
+        return servers[0];
+    }, []);
+
+    // Проверяет доступность сервера через наш прокси
+    const checkServerAvailability = async (server: string): Promise<boolean> => {
+        try {
+            // Используем наш прокси для проверки сервера
+            const testUrl = `${LIBRESPEED_ENDPOINT}/check?server=${encodeURIComponent(server)}`;
+            const response = await fetch(testUrl, {
+                method: 'GET',
+                cache: 'no-cache',
+                // Устанавливаем короткий таймаут
+                signal: AbortSignal.timeout(2000)
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                return data.available === true;
+            }
+            return false;
+        } catch (err) {
+            console.log(`Ошибка при проверке сервера: ${server}`, err);
+            return false;
+        }
+    };
+
     // Загрузка списка серверов с кэшированием
     useEffect(() => {
         const fetchServers = async () => {
             try {
                 // Проверяем локальный кэш
-                const cacheKey = 'server_info_cache';
+                const cacheKey = 'librespeed_servers_cache';
                 const cacheStr = localStorage.getItem(cacheKey);
                 
                 if (cacheStr) {
                     try {
                         const cache = JSON.parse(cacheStr);
                         if (Date.now() - cache.timestamp < CACHE_DURATION) {
-                            console.log('Using cached server info');
+                            console.log('Using cached LibreSpeed server info');
                             setServers(cache.data);
                             
-                            // Если сервер еще не выбран, выбираем первый из списка
+                            // Автоматический выбор лучшего сервера
                             if (!selectedServer && cache.data.length > 0) {
-                                setSelectedServer(cache.data[0]);
+                                const bestServer = findBestServer(cache.data, geolocationData?.country);
+                                setSelectedServer(bestServer);
                             }
                             return;
                         }
@@ -48,250 +112,305 @@ export const useLibreSpeedTest = () => {
                     }
                 }
                 
-                // Если нет кэша или кэш устарел, делаем запрос
-                console.log('Fetching fresh server info...');
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/server-info`);
+                // Получаем список серверов через наш прокси
+                console.log('Получаем список серверов через прокси...');
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (data && data.servers && data.servers.length > 0) {
-                        // Преобразуем серверы в формат LibreSpeedServer
-                        const formattedServers: LibreSpeedServer[] = data.servers.map((s: any) => ({
-                            name: s.name || 'Неизвестный сервер',
-                            server: s.url || '',
-                            dlURL: 'garbage.php',
-                            ulURL: 'empty.php',
-                            pingURL: 'empty.php',
-                            getIpURL: 'getIP.php',
-                            location: s.location || {
-                                city: s.city || '',
-                                region: s.region || '',
-                                country: s.country || '',
-                                org: s.sponsor || ''
+                try {
+                    const response = await fetch(`${LIBRESPEED_ENDPOINT}/servers`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        if (data && Array.isArray(data) && data.length > 0) {
+                            console.log(`Получено ${data.length} серверов через прокси`);
+                            
+                            // Используем серверы, полученные через прокси
+                            setServers(data);
+                            
+                            // Выбираем предпочтительный сервер в Словакии, если доступен
+                            const slovakServers = data.filter(server => 
+                                server.location?.country?.includes('Slovakia') || 
+                                server.name?.includes('Slovakia')
+                            );
+                            
+                            // Если есть словацкие серверы, используем их
+                            if (slovakServers.length > 0) {
+                                const bestServer = findBestServer(slovakServers, 'Slovakia');
+                                setSelectedServer(bestServer);
+                                console.log(`Выбран словацкий сервер: ${bestServer.name}`);
+                            } else {
+                                // Иначе используем ближайший европейский сервер
+                                const bestServer = findBestServer(data, geolocationData?.country);
+                                setSelectedServer(bestServer);
+                                console.log(`Выбран сервер: ${bestServer.name}`);
                             }
-                        }));
+                            
+                            // Кэшируем результат
+                            localStorage.setItem(cacheKey, JSON.stringify({
+                                data: data,
+                                timestamp: Date.now()
+                            }));
+                            
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Ошибка при получении серверов через прокси:', error);
+                }
+                
+                // Если API не сработал, используем проверенный список публичных серверов
+                console.log('Using static list of verified LibreSpeed servers');
+                
+                // Список проверенных серверов (используем HTTP чтобы избежать проблем с сертификатами)
+                const staticLibreSpeedServers: LibreSpeedServer[] = [
+                    // Серверы в Словакии и рядом
+                    {
+                        name: "Bratislava, Slovakia (Otelo)",
+                        server: "http://bratislava.otelo.sk:8080/",
+                        dlURL: "garbage.php",
+                        ulURL: "empty.php",
+                        pingURL: "empty.php",
+                        getIpURL: "getIP.php",
+                        location: {
+                            city: "Bratislava",
+                            region: "",
+                            country: "Slovakia",
+                            org: "Otelo"
+                        }
+                    },
+                    {
+                        name: "Bratislava, Slovakia (VNET)",
+                        server: "http://speedtest.host.sk/",
+                        dlURL: "garbage.php",
+                        ulURL: "empty.php",
+                        pingURL: "empty.php",
+                        getIpURL: "getIP.php",
+                        location: {
+                            city: "Bratislava",
+                            region: "",
+                            country: "Slovakia",
+                            org: "VNET"
+                        }
+                    },
+                    {
+                        name: "Nitra, Slovakia (Slovanet)",
+                        server: "http://st.slovanet.sk/",
+                        dlURL: "garbage.php",
+                        ulURL: "empty.php",
+                        pingURL: "empty.php",
+                        getIpURL: "getIP.php",
+                        location: {
+                            city: "Nitra",
+                            region: "",
+                            country: "Slovakia",
+                            org: "Slovanet"
+                        }
+                    },
+                    {
+                        name: "Budapest, Hungary (Tarr)",
+                        server: "http://st.tarr.hu/",
+                        dlURL: "garbage.php",
+                        ulURL: "empty.php",
+                        pingURL: "empty.php",
+                        getIpURL: "getIP.php",
+                        location: {
+                            city: "Budapest",
+                            region: "",
+                            country: "Hungary",
+                            org: "Tarr"
+                        }
+                    },
+                    {
+                        name: "Vienna, Austria (Easyname)",
+                        server: "http://speedtest.easyname.com/",
+                        dlURL: "garbage.php",
+                        ulURL: "empty.php",
+                        pingURL: "empty.php",
+                        getIpURL: "getIP.php",
+                        location: {
+                            city: "Vienna",
+                            region: "",
+                            country: "Austria",
+                            org: "Easyname"
+                        }
+                    },
+                    {
+                        name: "Prague, Czech Republic (O2)",
+                        server: "http://speedtest.o2.cz/",
+                        dlURL: "garbage.php",
+                        ulURL: "empty.php",
+                        pingURL: "empty.php",
+                        getIpURL: "getIP.php",
+                        location: {
+                            city: "Prague",
+                            region: "",
+                            country: "Czech Republic",
+                            org: "O2"
+                        }
+                    },
+                    {
+                        name: "Munich, Germany (M-net)",
+                        server: "http://speedtest.m-net.de/",
+                        dlURL: "garbage.php",
+                        ulURL: "empty.php",
+                        pingURL: "empty.php",
+                        getIpURL: "getIP.php",
+                        location: {
+                            city: "Munich",
+                            region: "",
+                            country: "Germany",
+                            org: "M-net"
+                        }
+                    }
+                ];
+                
+                setServers(staticLibreSpeedServers);
+                
+                // Теперь проверим доступность серверов и выберем лучший
+                try {
+                    console.log('Проверка доступности серверов...');
+                    const availableServers: LibreSpeedServer[] = [];
+                    
+                    for (const server of staticLibreSpeedServers) {
+                        const isAvailable = await checkServerAvailability(server.server);
+                        if (isAvailable) {
+                            console.log(`Сервер ${server.name} доступен`);
+                            availableServers.push(server);
+                        }
+                    }
+                    
+                    if (availableServers.length > 0) {
+                        console.log(`Найдено ${availableServers.length} доступных серверов`);
+                        // Обновляем список серверов только доступными серверами
+                        setServers(availableServers);
                         
-                        // Кэшируем результат
-                        localStorage.setItem(cacheKey, JSON.stringify({
-                            data: formattedServers,
-                            timestamp: Date.now()
-                        }));
-                        
-                        setServers(formattedServers);
-                        
-                        // Если сервер еще не выбран, выбираем первый из списка
-                        if (!selectedServer && formattedServers.length > 0) {
-                            setSelectedServer(formattedServers[0]);
+                        // Автоматический выбор лучшего сервера
+                        if (!selectedServer) {
+                            const bestServer = findBestServer(availableServers, geolocationData?.country);
+                            setSelectedServer(bestServer);
+                            console.log(`Выбран сервер: ${bestServer.name}`);
                         }
                     } else {
-                        // Если серверов нет, создаем локальный сервер
-                        const defaultServer: LibreSpeedServer = {
-                            name: 'RychlostNet Local',
-                            server: window.location.origin + '/api/librespeed',
-                            dlURL: 'garbage.php',
-                            ulURL: 'empty.php',
-                            pingURL: 'empty.php',
-                            getIpURL: 'getIP.php',
-                            location: {
-                                city: 'Local',
-                                region: 'Local',
-                                country: 'Local',
-                                org: 'RychlostNet'
-                            }
-                        };
-                        setServers([defaultServer]);
-                        setSelectedServer(defaultServer);
+                        console.log('Нет доступных серверов, используем исходный список');
+                        if (!selectedServer && staticLibreSpeedServers.length > 0) {
+                            const bestServer = findBestServer(staticLibreSpeedServers, geolocationData?.country);
+                            setSelectedServer(bestServer);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Ошибка при проверке серверов:', error);
+                    // Если произошла ошибка, просто выбираем из статического списка
+                    if (!selectedServer && staticLibreSpeedServers.length > 0) {
+                        const bestServer = findBestServer(staticLibreSpeedServers, geolocationData?.country);
+                        setSelectedServer(bestServer);
                     }
                 }
             } catch (error) {
                 console.error('Ошибка при загрузке списка серверов LibreSpeed:', error);
+                
+                // Если произошла ошибка, но у нас есть выбранный сервер, используем его
+                if (!selectedServer && servers.length > 0) {
+                    setSelectedServer(servers[0]);
+                }
             }
         };
         
         fetchServers();
+    }, [findBestServer, geolocationData?.country]);
+    
+    // Запуск теста LibreSpeed
+    const runLibreSpeedTest = useCallback(async () => {
+        // Если нет выбранного сервера, не запускаем тест
+        if (!selectedServer) {
+            console.error('LibreSpeed test cancelled - no server selected');
+            return null;
+        }
+
+        console.log(`Starting LibreSpeed test using server: ${selectedServer.name}`);
+        
+        try {
+            setIsRunning(true);
+            
+            // Используем наш прокси для запуска теста LibreSpeed
+            // Это решает проблему с CORS
+            const response = await fetch(`${LIBRESPEED_ENDPOINT}/test`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    server: selectedServer
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('LibreSpeed test completed:', result);
+                
+                // Преобразуем результат в формат SpeedTestResult
+                const speedTestResult: SpeedTestResult = {
+                    download: result.download,
+                    upload: result.upload,
+                    ping: {
+                        avg: result.ping,
+                        min: result.ping - (result.jitter / 2) || result.ping,
+                        max: result.ping + (result.jitter / 2) || result.ping
+                    },
+                    jitter: result.jitter,
+                    ip: result.ip,
+                    isp: result.isp,
+                    server: selectedServer,
+                    timestamp: new Date().toISOString()
+                };
+                
+                setResult(speedTestResult);
+                return speedTestResult;
+            } else {
+                console.error('LibreSpeed test failed:', await response.text());
+                return null;
+            }
+        } catch (error) {
+            console.error('Error during LibreSpeed test:', error);
+            return null;
+        } finally {
+            setIsRunning(false);
+        }
     }, [selectedServer]);
     
-    // Функция для тестирования загрузки (download)
-// Функция для тестирования загрузки (download)
-const testDownload = async (): Promise<number> => {
-    try {
-        if (!selectedServer) {
-            throw new Error('Сервер не выбран');
-        }
-        
-        // Используем API LibreSpeed для тестирования загрузки (размер файла 1MB)
-        const downloadSizeMB = 1; // размер в мегабайтах
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/librespeed/garbage?size=${downloadSizeMB}`);
-        
-        if (response.ok) {
-            const startTime = Date.now();
-            await response.arrayBuffer(); // Дожидаемся полной загрузки данных
-            const endTime = Date.now();
-            
-            // Считаем скорость в Mbps
-            const duration = (endTime - startTime) / 1000; // в секундах
-            const sizeInBits = downloadSizeMB * 1024 * 1024 * 8; // в битах (MB -> биты)
-            const speedMbps = sizeInBits / 1000000 / duration; // в Мбит/с
-            
-            return speedMbps;
-        }
-        
-        throw new Error('Не удалось получить скорость загрузки');
-    } catch (error) {
-        console.error('Ошибка при тестировании скорости загрузки:', error);
-        return 0;
-    }
-};
-    // Функция для тестирования выгрузки (upload)
-// Функция для тестирования выгрузки (upload)
-const testUpload = async (): Promise<number> => {
-    try {
-        if (!selectedServer) {
-            throw new Error('Сервер не выбран');
-        }
-        
-        // Создаем данные для отправки
-        const dataSize = 1024 * 1024 * 5; // 5 MB
-        const randomData = new ArrayBuffer(dataSize);
-        const blob = new Blob([randomData], { type: 'application/octet-stream' });
-        
-        // Создаем форму для multipart/form-data
-        const formData = new FormData();
-        formData.append('file', new File([blob], 'speedtest.bin', { type: 'application/octet-stream' }));
-        
-        const startTime = Date.now();
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/librespeed/upload`, {
-            method: 'POST',
-            body: formData
-        });
-        const endTime = Date.now();
-        
-        if (response.ok) {
-            // Рассчитываем скорость в Mbps
-            const duration = (endTime - startTime) / 1000; // в секундах
-            const speedMbps = (dataSize * 8) / 1000000 / duration; // из бит в Мбит/с
-            
-            return speedMbps;
-        }
-        
-        throw new Error('Не удалось получить скорость выгрузки');
-    } catch (error) {
-        console.error('Ошибка при тестировании скорости выгрузки:', error);
-        return 0;
-    }
-};
-    
-    // Функция для тестирования пинга
-// Функция для тестирования пинга
-const testPing = async (): Promise<{min: number, max: number, avg: number, jitter: number}> => {
-    try {
-        if (!selectedServer) {
-            throw new Error('Сервер не выбран');
-        }
-        
-        // Используем API LibreSpeed для тестирования пинга
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/librespeed/ping`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data) {
-                const ping = data.ping || 0;
-                const jitter = data.jitter || 0;
-                
-                return {
-                    min: ping - jitter / 2,
-                    max: ping + jitter / 2,
-                    avg: ping,
-                    jitter: jitter
-                };
-            }
-        }
-        
-        throw new Error('Не удалось получить пинг');
-    } catch (error) {
-        console.error('Ошибка при тестировании пинга:', error);
-        return { min: 0, max: 0, avg: 0, jitter: 0 };
-    }
-};
     // Функция для запуска всех тестов
     const runSpeedTest = async () => {
         // Если тест уже запущен, просто вернемся
-        if (testInProgressRef.current) {
-            return;
+        if (isRunning) {
+            return null;
         }
-        
-        testInProgressRef.current = true;
-        setIsTesting(true);
-        setProgress(0);
-        
-        // Сбрасываем предыдущие результаты
-        setDownloadSpeed('');
-        setUploadSpeed('');
-        setPingStats({ min: 0, max: 0, avg: 0, jitter: 0 });
-        
+
         try {
-            // Тест пинга (20% прогресса)
+            setIsRunning(true);
+            setProgress(0);
+
+            // Обнуляем предыдущий результат
+            setResult(null);
+
+            // Шаг 1: Тестируем пинг
             setProgress(10);
-            const pingResult = await testPing();
-            setPingStats(pingResult);
-            setProgress(20);
+            setCurrentTest('ping');
             
-            // Тест скорости загрузки (20% до 60% прогресса)
-            setProgress(30);
-            const dlSpeed = await testDownload();
-            setDownloadSpeed(`${dlSpeed.toFixed(2)} Mbps`);
-            setProgress(60);
+            // Запускаем полный тест через наш прокси
+            const testResult = await runLibreSpeedTest();
             
-            // Тест скорости выгрузки (60% до 100% прогресса)
-            setProgress(70);
-            const ulSpeed = await testUpload();
-            setUploadSpeed(`${ulSpeed.toFixed(2)} Mbps`);
+            if (!testResult) {
+                throw new Error('Тест не удалось завершить');
+            }
+
+            // Завершаем тест
             setProgress(100);
+            setCurrentTest(null);
             
-            // Сохраняем результаты
-            const result: SpeedTestResult = {
-                download: dlSpeed,
-                upload: ulSpeed,
-                ping: {
-                    min: pingResult.min,
-                    max: pingResult.max,
-                    avg: pingResult.avg
-                },
-                jitter: pingResult.jitter,
-                ip: geolocationData?.ip || '',
-                server: selectedServer || undefined,
-                timestamp: new Date().toISOString()
-            };
-            
-            setLibreSpeedResult(result);
-            
-            // Отправляем результаты на сервер
-            saveResults(result);
+            return testResult;
         } catch (error) {
-            console.error('Ошибка при запуске теста скорости:', error);
+            console.error('Error during speed test:', error);
+            return null;
         } finally {
-            setIsTesting(false);
-            testInProgressRef.current = false;
-        }
-    };
-    
-    // Функция для отправки результатов на сервер
-    const saveResults = async (result: SpeedTestResult) => {
-        try {
-            // Просто логируем результаты в консоль, так как эндпоинта нет
-            console.log('Результаты LibreSpeed тестирования:', result);
-            
-            // Если в будущем понадобится отправка на сервер, используйте правильный эндпоинт
-            // await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/librespeed/results`, {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json'
-            //     },
-            //     body: JSON.stringify(result)
-            // });
-        } catch (error) {
-            console.error('Ошибка при сохранении результатов LibreSpeed:', error);
+            setIsRunning(false);
         }
     };
     
@@ -305,7 +424,9 @@ const testPing = async (): Promise<{min: number, max: number, avg: number, jitte
         runSpeedTest,
         servers,
         selectedServer,
-        setSelectedServer
+        setSelectedServer,
+        isRunning,
+        result,
+        currentTest
     };
 };
-
