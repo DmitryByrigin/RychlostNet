@@ -1,5 +1,6 @@
-import SpeedTest from './dashboard/speedtest/page';
+import SpeedTest from "@/app/dashboard/speedtest/page";
 
-export default function Home() {
+
+export default function HomePage() {
   return <SpeedTest />;
 }
