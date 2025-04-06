@@ -69,7 +69,7 @@ const SpeedTestContent: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [selectedArrow, setSelectedArrow] = useState<"single" | "multi">(
-    "multi"
+      "multi"
   );
   const [filteredServers, setFilteredServers] = useState<Server[]>([]);
 
@@ -95,11 +95,11 @@ const SpeedTestContent: React.FC = () => {
   // Корректировка результатов на основе LibreSpeed и Fast.com
   useEffect(() => {
     if (
-      libreSpeedResult &&
-      fastSpeedResult &&
-      downloadSpeed &&
-      uploadSpeed &&
-      pingStats.avg > 0
+        libreSpeedResult &&
+        fastSpeedResult &&
+        downloadSpeed &&
+        uploadSpeed &&
+        pingStats.avg > 0
     ) {
       // Извлекаем числовые значения из строк с "Mbps"
       const extractNumber = (str: string) => {
@@ -117,14 +117,14 @@ const SpeedTestContent: React.FC = () => {
       const fastDownload = fastSpeedResult || 0;
       // Поскольку Fast.com не измеряет скорость загрузки, используем соотношение из LibreSpeed
       const fastUpload = fastSpeedResult
-        ? fastSpeedResult * (libreUpload / libreDownload)
-        : 0;
+          ? fastSpeedResult * (libreUpload / libreDownload)
+          : 0;
 
       // Получаем пинг из LibreSpeed (учитываем, что это может быть объект или число)
       const librePing =
-        typeof libreSpeedResult.ping === "object"
-          ? libreSpeedResult.ping.avg
-          : libreSpeedResult.ping;
+          typeof libreSpeedResult.ping === "object"
+              ? libreSpeedResult.ping.avg
+              : libreSpeedResult.ping;
 
       // Калибровочные факторы
       const downloadFactor = 1.15;
@@ -133,17 +133,17 @@ const SpeedTestContent: React.FC = () => {
 
       // Рассчитываем корректированные значения
       const correctedDownload =
-        originalDownload *
-        (1 +
-          (libreDownload / originalDownload - 1) * downloadFactor +
-          (fastDownload / originalDownload - 1) * downloadFactor);
+          originalDownload *
+          (1 +
+              (libreDownload / originalDownload - 1) * downloadFactor +
+              (fastDownload / originalDownload - 1) * downloadFactor);
       const correctedUpload =
-        originalUpload *
-        (1 +
-          (libreUpload / originalUpload - 1) * uploadFactor +
-          (fastUpload / originalUpload - 1) * uploadFactor);
+          originalUpload *
+          (1 +
+              (libreUpload / originalUpload - 1) * uploadFactor +
+              (fastUpload / originalUpload - 1) * uploadFactor);
       const correctedPingValue =
-        pingStats.avg * (1 + (librePing / pingStats.avg - 1) * pingFactor);
+          pingStats.avg * (1 + (librePing / pingStats.avg - 1) * pingFactor);
 
       setCorrectedResults({
         download: `${correctedDownload.toFixed(2)} Mbps`,
@@ -201,29 +201,29 @@ const SpeedTestContent: React.FC = () => {
     {
       key: "Ping",
       value: isTesting
-        ? "Measuring..."
-        : typeof libreSpeedResult?.ping?.avg === "number" &&
+          ? "Measuring..."
+          : typeof libreSpeedResult?.ping?.avg === "number" &&
           libreSpeedResult.ping.avg > 0
-        ? `${libreSpeedResult.ping.avg.toFixed(2)} ms`
-        : "",
+              ? `${libreSpeedResult.ping.avg.toFixed(2)} ms`
+              : "",
       icon: IconArrowsDiff,
     },
     {
       key: "Download",
       value: isTesting
-        ? "Measuring..."
-        : libreSpeedResult?.download
-        ? `${libreSpeedResult.download.toFixed(2)} Mbps`
-        : "",
+          ? "Measuring..."
+          : libreSpeedResult?.download
+              ? `${libreSpeedResult.download.toFixed(2)} Mbps`
+              : "",
       icon: IconDownload,
     },
     {
       key: "Upload",
       value: isTesting
-        ? "Measuring..."
-        : libreSpeedResult?.upload
-        ? `${libreSpeedResult.upload.toFixed(2)} Mbps`
-        : "",
+          ? "Measuring..."
+          : libreSpeedResult?.upload
+              ? `${libreSpeedResult.upload.toFixed(2)} Mbps`
+              : "",
       icon: IconUpload,
     },
   ];
@@ -233,28 +233,28 @@ const SpeedTestContent: React.FC = () => {
     {
       key: "Ping",
       value: isTesting
-        ? "Measuring..."
-        : typeof pingStats?.avg === "number" && pingStats.avg > 0
-        ? `${pingStats.avg.toFixed(2)} ms`
-        : "",
+          ? "Measuring..."
+          : typeof pingStats?.avg === "number" && pingStats.avg > 0
+              ? `${pingStats.avg.toFixed(2)} ms`
+              : "",
       icon: IconArrowsDiff,
     },
     {
       key: "Download",
       value: isTesting
-        ? "Measuring..."
-        : downloadSpeed
-        ? `${parseFloat(downloadSpeed).toFixed(2)} Mbps`
-        : "",
+          ? "Measuring..."
+          : downloadSpeed
+              ? `${parseFloat(downloadSpeed).toFixed(2)} Mbps`
+              : "",
       icon: IconDownload,
     },
     {
       key: "Upload",
       value: isTesting
-        ? "Measuring..."
-        : uploadSpeed
-        ? `${parseFloat(uploadSpeed).toFixed(2)} Mbps`
-        : "",
+          ? "Measuring..."
+          : uploadSpeed
+              ? `${parseFloat(uploadSpeed).toFixed(2)} Mbps`
+              : "",
       icon: IconUpload,
     },
   ];
@@ -264,123 +264,123 @@ const SpeedTestContent: React.FC = () => {
     {
       key: "Ping",
       value: isTesting
-        ? "Measuring..."
-        : typeof fastPingStats?.avg === "number" && fastPingStats.avg > 0
-        ? `${fastPingStats.avg.toFixed(2)} ms`
-        : "",
+          ? "Measuring..."
+          : typeof fastPingStats?.avg === "number" && fastPingStats.avg > 0
+              ? `${fastPingStats.avg.toFixed(2)} ms`
+              : "",
       icon: IconArrowsDiff,
     },
     {
       key: "Download",
       value: isTesting
-        ? "Measuring..."
-        : fastDownloadSpeed
-        ? `${fastDownloadSpeed} Mbps`
-        : "",
+          ? "Measuring..."
+          : fastDownloadSpeed
+              ? `${fastDownloadSpeed} Mbps`
+              : "",
       icon: IconDownload,
     },
     {
       key: "Upload",
       value: isTesting
-        ? "Measuring..."
-        : fastUploadSpeed
-        ? `${fastUploadSpeed} Mbps`
-        : "",
+          ? "Measuring..."
+          : fastUploadSpeed
+              ? `${fastUploadSpeed} Mbps`
+              : "",
       icon: IconUpload,
     },
   ];
 
   return (
-    <Grid gutter="md">
-      <Grid.Col span={{ base: 12, md: 6 }}>
-        <Center>
-          <SpeedTestControls
-            isTesting={isTesting}
-            onStartTest={runAllTests}
-            hasAvailableServers={filteredServers.length > 0}
-          />
-        </Center>
-
-        {/* Информация о калибровке */}
-        {(libreSpeedResult || fastSpeedResult) && (
+      <Grid gutter="md">
+        <Grid.Col span={{ base: 12, md: 6 }}>
           <Center>
-            <Text size="xs" color="dimmed" mt="xs">
-              Результаты калиброваны с использованием LibreSpeed и Fast.com
-            </Text>
+            <SpeedTestControls
+                isTesting={isTesting}
+                onStartTest={runAllTests}
+                hasAvailableServers={filteredServers.length > 0}
+            />
           </Center>
-        )}
-      </Grid.Col>
 
-      <Grid.Col span={{ base: 12, md: 6 }}>
-        <Card withBorder radius="md" className={classes.card}>
-          <Group justify="space-between">
-            <Text className={classes.title}>Services</Text>
-          </Group>
-          <SimpleGrid cols={1} mt="md">
-            {loading ? (
-              <>
-                <OperatorService ip="" org="Loading..." location="" />
-                <ServerService setFilteredServers={setFilteredServers} />
-                <ConnectionsService
-                  selectedArrow={selectedArrow}
-                  setSelectedArrow={setSelectedArrow}
-                />
-              </>
-            ) : (
-              <>
-                <OperatorService
-                  ip={geolocationData?.ip || ""}
-                  org={geolocationData?.org || "Unknown ISP"}
-                  location={`${geolocationData?.city || ""}, ${
-                    geolocationData?.country || ""
-                  }`}
-                />
-                <ServerService setFilteredServers={setFilteredServers} />
-                <ConnectionsService
-                  selectedArrow={selectedArrow}
-                  setSelectedArrow={setSelectedArrow}
-                />
-              </>
-            )}
-          </SimpleGrid>
-        </Card>
-      </Grid.Col>
+          {/* Информация о калибровке */}
+          {(libreSpeedResult || fastSpeedResult) && (
+              <Center>
+                <Text size="xs" color="dimmed" mt="xs">
+                  Результаты калиброваны с использованием LibreSpeed и Fast.com
+                </Text>
+              </Center>
+          )}
+        </Grid.Col>
 
-      <Grid.Col span={12}>
-        <Card withBorder radius="md" className={classes.card}>
-          <Group justify="space-between">
-            <Text className={classes.title}>RychlostNet Test Results</Text>
-          </Group>
-          <SpeedTestResult networkStats={customSpeedStats} />
-        </Card>
-      </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Card withBorder radius="md" className={classes.card}>
+            <Group justify="space-between">
+              <Text className={classes.title}>Services</Text>
+            </Group>
+            <SimpleGrid cols={1} mt="md">
+              {loading ? (
+                  <>
+                    <OperatorService ip="" org="Loading..." location="" />
+                    <ServerService setFilteredServers={setFilteredServers} />
+                    <ConnectionsService
+                        selectedArrow={selectedArrow}
+                        setSelectedArrow={setSelectedArrow}
+                    />
+                  </>
+              ) : (
+                  <>
+                    <OperatorService
+                        ip={geolocationData?.ip || ""}
+                        org={geolocationData?.org || "Unknown ISP"}
+                        location={`${geolocationData?.city || ""}, ${
+                            geolocationData?.country || ""
+                        }`}
+                    />
+                    <ServerService setFilteredServers={setFilteredServers} />
+                    <ConnectionsService
+                        selectedArrow={selectedArrow}
+                        setSelectedArrow={setSelectedArrow}
+                    />
+                  </>
+              )}
+            </SimpleGrid>
+          </Card>
+        </Grid.Col>
 
-      <Grid.Col span={12}>
-        <Card withBorder radius="md" className={classes.card}>
-          <Group justify="space-between">
-            <Text className={classes.title}>LibreSpeed Test Results</Text>
-          </Group>
-          <SpeedTestResult networkStats={networkStats} />
-        </Card>
-      </Grid.Col>
+        <Grid.Col span={12}>
+          <Card withBorder radius="md" className={classes.card}>
+            <Group justify="space-between">
+              <Text className={classes.title}>RychlostNet Test Results</Text>
+            </Group>
+            <SpeedTestResult networkStats={customSpeedStats} />
+          </Card>
+        </Grid.Col>
 
-      <Grid.Col span={12}>
-        <Card withBorder radius="md" className={classes.card}>
-          <Group justify="space-between">
-            <Text className={classes.title}>Fast.com Test Results</Text>
-          </Group>
-          <SpeedTestResult networkStats={fastSpeedStats} />
-        </Card>
-      </Grid.Col>
-    </Grid>
+        <Grid.Col span={12}>
+          <Card withBorder radius="md" className={classes.card}>
+            <Group justify="space-between">
+              <Text className={classes.title}>LibreSpeed Test Results</Text>
+            </Group>
+            <SpeedTestResult networkStats={networkStats} />
+          </Card>
+        </Grid.Col>
+
+        <Grid.Col span={12}>
+          <Card withBorder radius="md" className={classes.card}>
+            <Group justify="space-between">
+              <Text className={classes.title}>Fast.com Test Results</Text>
+            </Group>
+            <SpeedTestResult networkStats={fastSpeedStats} />
+          </Card>
+        </Grid.Col>
+      </Grid>
   );
 };
 
 const SpeedTest: React.FC = () => {
   return (
-    <ServerProvider>
-      <SpeedTestContent />
-    </ServerProvider>
+      <ServerProvider>
+        <SpeedTestContent />
+      </ServerProvider>
   );
 };
 
