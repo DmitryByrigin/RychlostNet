@@ -343,8 +343,11 @@ export const useLibreSpeedTest = () => {
             });
             
             if (response.ok) {
-                const result = await response.json();
-                console.log('LibreSpeed test completed:', result);
+                const responseData = await response.json();
+                console.log('LibreSpeed test completed:', responseData);
+                
+                // Извлекаем результат, учитывая структуру ответа
+                const result = responseData.success && responseData.result ? responseData.result : responseData;
                 
                 // Преобразуем результат в формат SpeedTestResult
                 const speedTestResult: SpeedTestResult = {
@@ -362,7 +365,20 @@ export const useLibreSpeedTest = () => {
                     timestamp: new Date().toISOString()
                 };
                 
+                // Устанавливаем результаты в оба состояния
                 setResult(speedTestResult);
+                setLibreSpeedResult(speedTestResult);
+                
+                // Устанавливаем также отдельные показатели для отображения
+                setDownloadSpeed(result.download.toFixed(2));
+                setUploadSpeed(result.upload.toFixed(2));
+                setPingStats({
+                    avg: result.ping,
+                    min: result.ping - (result.jitter / 2) || result.ping,
+                    max: result.ping + (result.jitter / 2) || result.ping, 
+                    jitter: result.jitter
+                });
+                
                 return speedTestResult;
             } else {
                 console.error('LibreSpeed test failed:', await response.text());
@@ -379,18 +395,21 @@ export const useLibreSpeedTest = () => {
     // Функция для запуска всех тестов
     const runSpeedTest = async () => {
         // Если тест уже запущен, просто вернемся
-        if (isRunning) {
+        if (isRunning || testInProgressRef.current) {
             return null;
         }
 
         try {
+            testInProgressRef.current = true;
             setIsRunning(true);
+            setIsTesting(true);
             setProgress(0);
 
             // Обнуляем предыдущий результат
             setResult(null);
+            setLibreSpeedResult(null);
 
-            // Шаг 1: Тестируем пинг
+            // Шаг 1: Начинаем тест
             setProgress(10);
             setCurrentTest('ping');
             
@@ -410,7 +429,9 @@ export const useLibreSpeedTest = () => {
             console.error('Error during speed test:', error);
             return null;
         } finally {
+            testInProgressRef.current = false;
             setIsRunning(false);
+            setIsTesting(false);
         }
     };
     

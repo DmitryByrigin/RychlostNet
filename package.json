@@ -32,6 +32,7 @@
     "clsx": "^2.0.0",
     "eslint-config": "^0.3.0",
     "eslint-plugin-react": "^7.35.0",
+    "fast-speedtest-api": "^0.3.2",
     "form-data": "^4.0.1",
     "formdata-node": "^6.0.3",
     "geoip-lite": "^1.4.10",
