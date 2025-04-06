@@ -16,8 +16,15 @@ export const useFastSpeedTest = () => {
     // Референс для отслеживания выполнения теста
     const testInProgressRef = useRef<boolean>(false);
     
-    // Получаем базовый URL API сервера из переменных окружения
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_SERVERS || 'http://localhost:3001';
+    // Используем новые локальные API маршруты Next.js вместо бэкенда Nest.js
+    const FASTCOM_TOKEN_URL = '/api/fastcom/token';
+    const FASTCOM_URLS_URL = '/api/fastcom/urls';
+    
+    // Добавляем cache-busting параметр к URL
+    const getCacheBustingUrl = (url: string) => {
+        const cacheBuster = `_cb=${Date.now()}`;
+        return url.includes('?') ? `${url}&${cacheBuster}` : `${url}?${cacheBuster}`;
+    };
     
     /**
      * Измеряет пинг до указанного URL
@@ -129,6 +136,35 @@ export const useFastSpeedTest = () => {
     };
 
     /**
+     * Безопасно читает ответ API, с проверкой и клонированием для отладки
+     */
+    const safeReadApiResponse = async (response: Response) => {
+        // Клонируем ответ, чтобы можно было прочитать его дважды
+        const clonedResponse = response.clone();
+        
+        try {
+            // Пытаемся прочитать как JSON
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при парсинге JSON:', error);
+            
+            try {
+                // Читаем клон ответа как текст для отладки
+                const text = await clonedResponse.text();
+                console.log('Содержимое ответа:', text.substring(0, 500) + (text.length > 500 ? '...' : ''));
+                
+                if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
+                    console.warn('Получен HTML вместо JSON - проблема с маршрутизацией API');
+                }
+            } catch (textError) {
+                console.error('Не удалось прочитать содержимое ответа:', textError);
+            }
+            
+            throw new Error('Не удалось распарсить ответ API как JSON');
+        }
+    };
+
+    /**
      * Запускает тест скорости через Fast.com API через наш прокси-сервер
      */
     const runSpeedTest = async (): Promise<number | null> => {
@@ -142,46 +178,91 @@ export const useFastSpeedTest = () => {
             setIsTesting(true);
             setProgress(10);
             
-            // Сначала получаем токен от нашего сервера
-            console.log('Getting Fast.com token from proxy...');
-            const tokenResponse = await fetch(`${apiBaseUrl}/api/speedtest/fastspeed/token`);
+            // Сначала получаем токен от нашего локального Next.js API
+            console.log('Getting Fast.com token from Next.js API...');
+            const tokenUrl = getCacheBustingUrl(FASTCOM_TOKEN_URL);
+            console.log('Запрос к:', tokenUrl);
+            
+            const tokenResponse = await fetch(tokenUrl, {
+                method: 'GET',
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-store, no-cache',
+                    'Pragma': 'no-cache'
+                }
+            });
+            
+            console.log('Статус ответа токена:', tokenResponse.status);
+            
+            // Получаем и логируем заголовки более безопасным способом
+            const headersObj: Record<string, string> = {};
+            tokenResponse.headers.forEach((value, key) => {
+                headersObj[key] = value;
+            });
+            console.log('Заголовки ответа токена:', headersObj);
             
             if (!tokenResponse.ok) {
                 throw new Error(`Failed to get Fast.com token: ${tokenResponse.status}`);
             }
             
-            const tokenData = await tokenResponse.json();
+            // Используем безопасное чтение ответа
+            const tokenData = await safeReadApiResponse(tokenResponse);
             const token = tokenData.token;
             
-            console.log('Getting Fast.com test URLs from proxy...');
+            if (!token) {
+                throw new Error('Token not found in response');
+            }
+            
+            console.log('Getting Fast.com test URLs from Next.js API...');
             setProgress(20);
             
-            // Теперь получаем URLs для тестирования через наш прокси
-            const urlsResponse = await fetch(`${apiBaseUrl}/api/speedtest/fastspeed/urls?token=${token}&urlCount=5`);
+            // Теперь получаем URLs для тестирования через наш локальный Next.js API
+            const urlsUrl = getCacheBustingUrl(`${FASTCOM_URLS_URL}?token=${token}&urlCount=5`);
+            console.log('Запрос к:', urlsUrl);
+            
+            const urlsResponse = await fetch(urlsUrl, {
+                method: 'GET',
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-store, no-cache',
+                    'Pragma': 'no-cache'
+                }
+            });
+            
+            console.log('Статус ответа URLs:', urlsResponse.status);
             
             if (!urlsResponse.ok) {
                 throw new Error(`Failed to get Fast.com test URLs: ${urlsResponse.status}`);
             }
             
-            const data = await urlsResponse.json();
+            // Используем безопасное чтение ответа
+            const data = await safeReadApiResponse(urlsResponse);
             
             if (!data.targets || data.targets.length === 0) {
                 throw new Error('No test URLs returned from Fast.com');
             }
             
-            console.log(`Received ${data.targets.length} test URLs from Fast.com via proxy`);
+            console.log(`Received ${data.targets.length} test URLs from Fast.com via Next.js API`);
             setProgress(30);
             
             // Фильтруем только HTTPS URLs для тестирования
             let testUrls = data.targets
-                .filter((target: any) => target.url.startsWith('https://'))
+                .filter((target: any) => target.url && target.url.startsWith('https://'))
                 .map((target: any) => ({ url: target.url }));
             
             // Если нет HTTPS URLs, используем все URL
             if (testUrls.length === 0) {
                 console.warn('No HTTPS URLs found, using all URLs');
-                testUrls = data.targets.map((target: any) => ({ url: target.url }));
+                testUrls = data.targets
+                    .filter((target: any) => target.url)
+                    .map((target: any) => ({ url: target.url }));
             }
+            
+            console.log('Тестовые URL для скачивания:', testUrls);
             
             // Сначала измеряем пинг (из первого URL)
             if (testUrls.length > 0) {
