@@ -8,10 +8,7 @@ const prisma = new PrismaClient();
 export async function POST(req: NextRequest) {
     try {
         const session = await auth();
-        if (!session || !session.user.id) {
-            return new NextResponse('Unauthorized', { status: 401 });
-        }
-
+        
         const {
             downloadSpeed,
             uploadSpeed,
@@ -29,20 +26,32 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const result = await prisma.speedTestHistory.create({
-            data: {
-                downloadSpeed,
-                uploadSpeed,
-                ping,
-                userLocation,
-                serverLocation,
-                serverName,
-                isp,
-                userId: session.user.id,
-            },
-        });
+        // Если пользователь авторизован, сохраняем результаты
+        if (session && session.user.id) {
+            await prisma.speedTestHistory.create({
+                data: {
+                    downloadSpeed,
+                    uploadSpeed,
+                    ping,
+                    userLocation,
+                    serverLocation,
+                    serverName,
+                    isp,
+                    userId: session.user.id,
+                },
+            });
+        }
 
-        return NextResponse.json(result, { status: 201 });
+        // Возвращаем результаты всем пользователям
+        return NextResponse.json({
+            downloadSpeed,
+            uploadSpeed,
+            ping,
+            userLocation,
+            serverLocation,
+            serverName,
+            isp
+        }, { status: 201 });
     } catch (error) {
         console.error('Error in POST /api/speedtest:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
