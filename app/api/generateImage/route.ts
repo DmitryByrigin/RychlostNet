@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tempFilesUtils } from '@/utils/tempFiles';
 import fs from 'fs/promises';
+import { auth } from '@/auth';
 
 async function generateNoiseImage(size: number): Promise<string> {
     // Создаем буфер фиксированного размера
@@ -58,6 +59,9 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+        // Получаем сессию, но не проверяем её
+        const session = await auth();
+        
         const body = await req.json();
         const sizes = body.sizes || [];
         
@@ -66,7 +70,7 @@ export async function POST(req: NextRequest) {
         const endTime = performance.now();
         
         const generationTime = endTime - startTime;
-        console.log(`Generated ${imagePaths.length} images in ${generationTime}ms`);
+        console.log(`Generated ${imagePaths.length} images in ${generationTime}ms for ${session ? 'authorized' : 'unauthorized'} user`);
 
         return NextResponse.json({
             imagePaths,
