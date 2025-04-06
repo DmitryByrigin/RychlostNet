@@ -1,7 +1,7 @@
 # docker-compose.yml
 version: '3.8'
 services:
-  db:
+  postgres:
     environment:
         POSTGRES_USER: user
         POSTGRES_PASSWORD: password
@@ -11,5 +11,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+
 volumes:
   postgres_data: null

@@ -17,9 +17,16 @@ export default auth((req, ctx) => {
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
+  
+  // Добавляем проверку для маршрутов с /api/librespeed
+  const isLibreSpeedRoute = nextUrl.pathname.startsWith('/api/librespeed');
 
   if (isApiAuthRoute) {
     return;
+  }
+  
+  if (isLibreSpeedRoute) {
+    return; // Пропускаем все запросы к LibreSpeed API
   }
 
   if (isAuthRoute) {
@@ -47,5 +54,9 @@ export default auth((req, ctx) => {
 
 // Optionally, don't invoke Middleware on some paths
 export const config = {
-  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
+  matcher: [
+    '/((?!.+\\.[\\w]+$|_next).*)', 
+    '/', 
+    '/(api|trpc)((?!/librespeed).*)',
+  ],
 };

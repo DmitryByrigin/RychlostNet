@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button, Center } from '@mantine/core';
 import classes from '../SpeedTest.module.css';
 
@@ -9,26 +9,24 @@ interface SpeedTestControlsProps {
 }
 
 export const SpeedTestControls: React.FC<SpeedTestControlsProps> = ({ isTesting, onStartTest, hasAvailableServers }) => {
-    const [isLoading, setIsLoading] = useState(false);
-
     const handleClick = async () => {
-        setIsLoading(true);
-        await onStartTest();
-        setIsLoading(false);
+        if (!isTesting) {
+            await onStartTest();
+        }
     };
 
     return (
         <Center style={{ overflow: 'hidden', width: '100%' }}>
             <Button
                 mb="lg"
-                className={`${classes.speedTestButton} ${isLoading ? classes.gradientBackground + ' ' + classes.testingAnimation : ''}`}
+                className={`${classes.speedTestButton} ${isTesting ? classes.gradientBackground + ' ' + classes.testingAnimation : ''}`}
                 size="lg"
                 radius="xl"
                 onClick={handleClick}
-                disabled={isLoading || !hasAvailableServers} // Disable if no available servers
+                disabled={isTesting || !hasAvailableServers} // Disable if no available servers
                 fullWidth
             >
-                {isLoading ? '' : 'Check'}
+                {isTesting ? '' : 'Check'}
             </Button>
         </Center>
     );

@@ -10,6 +10,7 @@ export const publicRoutes = [
     "/api/getgeolocation",
     "/api/generateImage",
     "/api/speedtest",
+    "/api/librespeed",
     "/dashboard/speedtest"
 ];
 
