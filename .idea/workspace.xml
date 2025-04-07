@@ -5,20 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6e77001e-0a37-439d-a470-1e2c235d7b16" name="Changes" comment="Added connection to the splayed backend">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300/storage_v2/_src_/database/mydatabase.J7NGgg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/b20d103d-2926-4dbb-8691-4a5b1100a300/storage_v2/_src_/database/mydatabase.J7NGgg/schema/public.abK9xQ.meta" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/speedtest/route.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/speedtest/route.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/DashboardHeader/DashboardHeader.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/DashboardLayout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/DashboardLayout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/history/components/SpeedTestHistory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/history/components/SpeedTestHistory.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/speedtest/components/ConnectionsService.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/ConnectionsService.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/speedtest/components/ServerService.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/ServerService.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/speedtest/components/SpeedTestControls.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/speedtest/components/SpeedTestControls.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/dashboard/speedtest/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/speedtest/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/auth/UserButton/user-button.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/auth/UserButton/user-button.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles/global.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles/global.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/dashboard/speedtest/hooks/utils/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/dashboard/speedtest/hooks/utils/types.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -89,7 +78,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "features/global-design-fix",
+    "git-widget-placeholder": "features/refactoring",
     "ignore.virus.scanning.warn.message": "true",
     "jsx.switch.disabled": "true",
     "last_opened_file_path": "C:/Study/Year Two/Diplom/RychlostNet/app/auth",
@@ -105,7 +94,7 @@
     "npm.dev.executor": "Run",
     "npm.start.executor": "Run",
     "settings.editor.selected.configurable": "vcs.Git",
-    "ts.external.directory.path": "C:\\Study\\Year Two\\Diplom\\RychlostNet\\node_modules\\typescript\\lib",
+    "ts.external.directory.path": "C:\\Users\\dmitr\\OneDrive\\Desktop\\RychlostNet\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
   },
   "keyToStringList": {
@@ -204,7 +193,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-e768b9ed790e-JavaScript-WS-243.21565.180" />
+        <option value="bundled-js-predefined-d6986cc7102b-deb605915726-JavaScript-WS-243.22562.222" />
       </set>
     </attachedChunks>
   </component>
@@ -299,6 +288,7 @@
       <workItem from="1733077808559" duration="1174000" />
       <workItem from="1733474680668" duration="16142000" />
       <workItem from="1733594704621" duration="7734000" />
+      <workItem from="1744033364530" duration="347000" />
     </task>
     <task id="LOCAL-00001" summary="Initial commit">
       <option name="closed" value="true" />

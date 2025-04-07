@@ -13,6 +13,7 @@ export interface SpeedTestResult {
     ping: PingStats;  // Используем PingStats вместо inline объекта
     jitter: number;
     ip?: string;
+    isp?: string;  // Добавляем поле isp
     server?: any;
     timestamp?: string;
 }
