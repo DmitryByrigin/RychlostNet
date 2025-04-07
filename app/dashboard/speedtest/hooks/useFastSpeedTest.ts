@@ -39,12 +39,12 @@ export const useFastSpeedTest = () => {
             const start = performance.now();
             
             try {
-                // Используем fetch с опцией HEAD для минимального объема данных
-                await fetch(new URL('/', url).toString(), {
-                    method: 'HEAD',
+                // Используем fetch с оригинальным URL вместо HEAD-запроса к корню домена
+                await fetch(url, {
+                    method: 'GET',
                     cache: 'no-store',
                     mode: 'cors',
-                    // Таймаут 2 секунды
+                    // Устанавливаем таймаут 2 секунды
                     signal: AbortSignal.timeout(2000)
                 });
                 
