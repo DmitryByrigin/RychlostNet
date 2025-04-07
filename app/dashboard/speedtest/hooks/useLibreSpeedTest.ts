@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useServer } from '../contexts/ServerContext';
-import { LibreSpeedServer, SpeedTestResult } from '../types/librespeed';
-import { PingStats } from './utils/types';
+import { LibreSpeedServer } from '../types/librespeed';
+import { PingStats, SpeedTestResult } from './utils/types';
 
 /**
  * Хук для работы с тестом скорости через LibreSpeed API
@@ -356,7 +356,8 @@ export const useLibreSpeedTest = () => {
                     ping: {
                         avg: result.ping,
                         min: result.ping - (result.jitter / 2) || result.ping,
-                        max: result.ping + (result.jitter / 2) || result.ping
+                        max: result.ping + (result.jitter / 2) || result.ping,
+                        jitter: result.jitter
                     },
                     jitter: result.jitter,
                     ip: result.ip,

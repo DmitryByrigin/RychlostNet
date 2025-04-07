@@ -7,15 +7,17 @@ export interface PingStats {
 }
 
 // Тип результата тестирования
-export interface SpeedTestResultExtended {
+export interface SpeedTestResult {
     download: number;
     upload: number;
-    ping: {
-        min: number;
-        max: number;
-        avg: number;
-    };
+    ping: PingStats;  // Используем PingStats вместо inline объекта
     jitter: number;
+    ip?: string;
+    server?: any;
+    timestamp?: string;
+}
+
+export interface SpeedTestResultExtended extends SpeedTestResult {
     ip: string;
     server: any;
     timestamp: string;

@@ -1,3 +1,5 @@
+import { PingStats } from './speedTest';
+
 // Типы для LibreSpeed API
 // Основаны на документации LibreSpeed v5.x
 
@@ -74,11 +76,7 @@ export interface SpeedTestData {
 export interface SpeedTestResult {
   download: number;
   upload: number;
-  ping: {
-    avg: number;
-    min: number;
-    max: number;
-  };
+  ping: PingStats;
   jitter: number;
   ip: string;
   isp?: string;

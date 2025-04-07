@@ -3,7 +3,8 @@ import React from "react";
 export interface PingStats {
     min: number;
     max: number;
-    avg: number | null;
+    avg: number;
+    jitter: number;
 }
 
 export interface NetworkStat {

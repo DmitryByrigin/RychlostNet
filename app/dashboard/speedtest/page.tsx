@@ -29,6 +29,7 @@ import OperatorService from "./components/OperatorService";
 import ServerService from "./components/ServerService";
 import ConnectionsService from "./components/ConnectionsService";
 import { Server } from "./types/geolocation";
+import { CorrectedResults } from "./components/CorrectedResults";
 
 const SpeedTestContent: React.FC = () => {
   const { geolocationData, selectedServer } = useServer();
@@ -372,6 +373,60 @@ const SpeedTestContent: React.FC = () => {
           <SpeedTestResult networkStats={fastSpeedStats} />
         </Card>
       </Grid.Col>
+
+      {/* Добавляем компонент скорректированных результатов только когда все тесты завершены */}
+      {!isTesting && downloadSpeed && libreSpeedResult && fastSpeedResult && (
+        <Grid.Col span={12}>
+          <CorrectedResults
+            ownTestResult={
+              downloadSpeed && uploadSpeed && pingStats.avg > 0
+                ? {
+                    download: Number(downloadSpeed.replace(" Mbps", "")),
+                    upload: Number(uploadSpeed.replace(" Mbps", "")),
+                    ping: pingStats,
+                    jitter: pingStats.jitter,
+                    ip: geolocationData?.ip || "",
+                    server: selectedServer,
+                    timestamp: new Date().toISOString(),
+                  }
+                : null
+            }
+            libreSpeedResult={
+              libreSpeedResult
+                ? {
+                    download: libreSpeedResult.download,
+                    upload: libreSpeedResult.upload,
+                    ping: {
+                      min: libreSpeedResult.ping.min,
+                      max: libreSpeedResult.ping.max,
+                      avg: libreSpeedResult.ping.avg,
+                      jitter: libreSpeedResult.jitter || 0
+                    },
+                    jitter: libreSpeedResult.jitter || 0,
+                    ip: libreSpeedResult.ip || "",
+                    server: libreSpeedResult.server,
+                    timestamp: libreSpeedResult.timestamp || new Date().toISOString(),
+                  }
+                : null
+            }
+            fastComResult={
+              fastSpeedResult && fastPingStats.avg > 0
+                ? {
+                    download: fastSpeedResult,
+                    upload: fastUploadSpeed
+                      ? Number(fastUploadSpeed.replace(" Mbps", ""))
+                      : 0,
+                    ping: fastPingStats,
+                    jitter: fastPingStats.jitter,
+                    ip: geolocationData?.ip || "",
+                    server: selectedServer,
+                    timestamp: new Date().toISOString(),
+                  }
+                : null
+            }
+          />
+        </Grid.Col>
+      )}
     </Grid>
   );
 };

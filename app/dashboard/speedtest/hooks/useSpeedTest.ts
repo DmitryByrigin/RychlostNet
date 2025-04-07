@@ -290,7 +290,8 @@ export const useSpeedTest = () => {
                 ping: {
                     min: pingResult.min,
                     max: pingResult.max,
-                    avg: pingResult.avg
+                    avg: pingResult.avg,
+                    jitter: 0
                 },
                 jitter: pingResult.jitter,
                 ip: geolocationData?.ip || '',
