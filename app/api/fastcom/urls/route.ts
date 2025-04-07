@@ -4,36 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Резервные серверы Fast.com для Словакии и ближайших регионов
-// Получены непосредственно из Fast.com API 6 апреля 2025
-const FAST_SERVERS = [
-  { 
-    url: "https://ipv4-c001-bts004-slovanet-isp.1.oca.nflxvideo.net/speedtest?c=sk&n=8778&v=62&e=1743973750&t=Snct6V7SG7zQBLOdWEyxZN34kh737dZhiJNslw",
-    location: { city: "Bratislava", country: "SK" }
-  },
-  { 
-    url: "https://ipv4-c002-ilz001-energotel31117-isp.1.oca.nflxvideo.net/speedtest?c=sk&n=8778&v=226&e=1743973750&t=w3aXG93cNCUuKf7UyfKDBzKaufGNTYvOUeKHYA",
-    location: { city: "Zilina", country: "SK" }
-  },
-  { 
-    url: "https://ipv4-c002-pzy001-energotel31117-isp.1.oca.nflxvideo.net/speedtest?c=sk&n=8778&v=226&e=1743973750&t=PcE-O9qVbDhMYnfjtdu3b80jmoMvIz1UhiSWxQ",
-    location: { city: "Nitra", country: "SK" }
-  },
-  { 
-    url: "https://ipv4-c001-vod001-peeringcz-isp.1.oca.nflxvideo.net/speedtest?c=sk&n=8778&v=152&e=1743973750&t=rq0qdi10X-pFXCbZPFwECx2r6WbUBbhFL0X3Dg",
-    location: { city: "Praha 10", country: "CZ" }
-  }
-];
-
-// Резервные серверы на случай, если ссылки из FAST_SERVERS станут недействительными
-// Эти ссылки более универсальные, но могут быть менее оптимальными географически
-const FALLBACK_SERVERS = [
-  { url: "https://ipv4-c004-sof001-i.1.speed.nflxvideo.net/?range=0-26214400" },
-  { url: "https://ipv4-c033-fra001-i.1.speed.nflxvideo.net/?range=0-26214400" },
-  { url: "https://ipv4-c008-vie001-i.1.speed.nflxvideo.net/?range=0-26214400" },
-  { url: "https://ipv4-c009-bud001-i.1.speed.nflxvideo.net/?range=0-26214400" },
-  { url: "https://ipv4-c031-prg001-i.1.speed.nflxvideo.net/?range=0-26214400" }
-];
+// Базовый URL API Fast.com
+const FAST_API_URL = 'https://api.fast.com/netflix/speedtest/v2';
 
 /**
  * Обработчик GET запросов для получения списка URL серверов Fast.com
@@ -64,52 +36,67 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Используем актуальные серверы без обращения к Fast.com API
-    console.log('Используем предварительно полученные серверы Fast.com для Словакии');
+    // Формируем URL для запроса к Fast.com API
+    const fastApiUrl = new URL(FAST_API_URL);
+    fastApiUrl.searchParams.set('https', 'true');
+    fastApiUrl.searchParams.set('token', token);
+    fastApiUrl.searchParams.set('urlCount', urlCount);
     
-    const response = {
-      targets: FAST_SERVERS,
-      client: {
-        ip: "195.80.176.66",
-        location: {
-          city: "Banska Bystrica",
-          country: "SK"
+    console.log('Запрос к Fast.com API:', fastApiUrl.toString());
+    
+    // Делаем запрос к Fast.com API
+    const response = await fetch(fastApiUrl.toString(), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('Ошибка при запросе к Fast.com API:', response.status);
+      return NextResponse.json(
+        { error: `Fast.com API error: ${response.status}` },
+        { 
+          status: response.status,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'X-Fast-API': 'urls-error-fast-api'
+          }
         }
-      },
-      timestamp: Date.now()
-    };
+      );
+    }
     
-    console.log(`Возвращаем ${FAST_SERVERS.length} серверов Fast.com`);
+    // Получаем данные от Fast.com API
+    const data = await response.json();
     
+    console.log(`Получено ${data.targets?.length || 0} серверов от Fast.com API`);
+    
+    // Возвращаем данные клиенту
     return NextResponse.json(
-      response, 
+      data,
       {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'X-Fast-API': 'urls-response-slovakia'
+          'X-Fast-API': 'urls-response-direct'
         }
       }
     );
   } catch (error: any) {
     console.error('Unhandled error in Fast.com URLs API:', error);
     
-    // В случае ошибки возвращаем резервные серверы
+    // В случае ошибки возвращаем сообщение об ошибке
     return NextResponse.json({
-      targets: FALLBACK_SERVERS,
-      client: {
-        ip: "",
-        location: {
-          country: "Slovakia"
-        }
-      },
-      timestamp: Date.now(),
-      error: String(error)
+      error: String(error),
+      message: 'Failed to get servers from Fast.com API'
     }, {
+      status: 500,
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'X-Fast-API': 'urls-fallback-unhandled-error'
+        'X-Fast-API': 'urls-error-unhandled'
       }
     });
   }
