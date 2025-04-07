@@ -99,40 +99,74 @@ export const useSpeedTest = () => {
     }, [selectedServer]);
 
     // Функция для тестирования пинга
-// Функция для тестирования пинга
-const testPing = async (): Promise<{min: number, max: number, avg: number, jitter: number}> => {
-    try {
-        if (!selectedServer) {
-            throw new Error('Сервер не выбран');
-        }
-        
-        // Выполним несколько запросов пинга для получения более точных данных
-        const pingResults: number[] = [];
-        const pingCount = 5;
-        
-        for (let i = 0; i < pingCount; i++) {
-            const startTime = Date.now();
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/ping`);
-            const endTime = Date.now();
-            
-            if (response.ok) {
-                // Рассчитываем пинг как разницу во времени
-                const pingTime = endTime - startTime;
-                pingResults.push(pingTime);
-            } else {
-                throw new Error('Ошибка при тестировании пинга');
+    const testPing = async (): Promise<{min: number, max: number, avg: number, jitter: number}> => {
+        try {
+            if (!selectedServer) {
+                throw new Error('Сервер не выбран');
             }
-        }
-        
-        if (pingResults.length > 0) {
-            // Рассчитываем статистику
-            const min = Math.min(...pingResults);
-            const max = Math.max(...pingResults);
-            const avg = pingResults.reduce((sum, time) => sum + time, 0) / pingResults.length;
             
-            // Рассчитываем джиттер как стандартное отклонение
-            const variance = pingResults.reduce((sum, time) => sum + Math.pow(time - avg, 2), 0) / pingResults.length;
-            const jitter = Math.sqrt(variance);
+            // Определяем URL для тестирования пинга
+            // Используем напрямую эндпоинт бэкенда для более точного измерения
+            const pingEndpoint = `${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/ping`;
+            console.log('Измерение пинга к эндпоинту:', pingEndpoint);
+            
+            // Увеличиваем количество замеров для более точной статистики
+            const pingResults: number[] = [];
+            const pingCount = 20; // больше замеров для статистики
+            
+            // Делаем предварительный "разогревающий" запрос для установления соединения
+            // Используем обычный GET запрос для разогрева
+            try {
+                await fetch(`${pingEndpoint}?_=${Date.now()}`);
+                // Небольшая пауза перед началом настоящих измерений
+                await new Promise(resolve => setTimeout(resolve, 50));
+            } catch (error) {
+                console.warn('Ошибка при разогреве соединения:', error);
+            }
+            
+            // Выполняем серию HEAD-запросов для более точного измерения пинга
+            for (let i = 0; i < pingCount; i++) {
+                const startTime = performance.now(); // Более точное измерение времени
+                try {
+                    // Теперь используем HEAD-запросы, так как мы обновили бэкенд
+                    await fetch(`${pingEndpoint}?nocache=${Date.now()}`, {
+                        method: 'HEAD',
+                        cache: 'no-store',
+                        headers: { 'Cache-Control': 'no-cache' }
+                    });
+                    const endTime = performance.now();
+                    pingResults.push(endTime - startTime);
+                } catch (error) {
+                    console.warn(`Ошибка в итерации ${i} при измерении пинга:`, error);
+                }
+                
+                // Минимальная пауза между запросами
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+            
+            if (pingResults.length === 0) {
+                throw new Error('Не получены данные о пинге');
+            }
+            
+            // Сортируем и берем только лучшие результаты (как в Speedtest.net)
+            const sortedResults = [...pingResults].sort((a, b) => a - b);
+            
+            // Используем только 30% лучших результатов
+            const bestCount = Math.max(3, Math.floor(sortedResults.length * 0.3));
+            const bestResults = sortedResults.slice(0, bestCount);
+            
+            console.log('Измерения пинга:', {
+                all: pingResults,
+                best: bestResults
+            });
+            
+            // Вычисляем статистику на основе лучших замеров
+            const min = bestResults[0];
+            const max = bestResults[bestResults.length - 1];
+            const avg = bestResults.reduce((sum, time) => sum + time, 0) / bestResults.length;
+            
+            // Джиттер вычисляем как среднее абсолютное отклонение
+            const jitter = pingResults.reduce((sum, val) => sum + Math.abs(val - avg), 0) / pingResults.length;
             
             return {
                 min,
@@ -140,83 +174,79 @@ const testPing = async (): Promise<{min: number, max: number, avg: number, jitte
                 avg,
                 jitter
             };
+        } catch (error) {
+            console.error('Ошибка при тестировании пинга:', error);
+            return { min: 0, max: 0, avg: 0, jitter: 0 };
         }
-        
-        throw new Error('Не получены данные о пинге');
-    } catch (error) {
-        console.error('Ошибка при тестировании пинга:', error);
-        return { min: 0, max: 0, avg: 0, jitter: 0 };
-    }
-};
+    };
     
     // Функция для тестирования загрузки (download)
-// Функция для тестирования загрузки (download)
-const testDownload = async (): Promise<number> => {
-    try {
-        if (!selectedServer) {
-            throw new Error('Сервер не выбран');
+    const testDownload = async (): Promise<number> => {
+        try {
+            if (!selectedServer) {
+                throw new Error('Сервер не выбран');
+            }
+            
+            // Используем корректный URL эндпоинта (уменьшенный размер файла 2MB)
+            const size = 1 * 1024 * 1024;
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/download/${size}`);
+            
+            if (response.ok) {
+                const startTime = Date.now();
+                await response.arrayBuffer(); // Дожидаемся полной загрузки данных
+                const endTime = Date.now();
+                
+                // Считаем скорость в Mbps
+                const duration = (endTime - startTime) / 1000; // в секундах
+                const speedMbps = (size * 8) / 1000000 / duration; // биты в Мбиты/с
+                
+                return speedMbps;
+            }
+            
+            throw new Error('Не удалось получить скорость загрузки');
+        } catch (error) {
+            console.error('Ошибка при тестировании скорости загрузки:', error);
+            return 0;
         }
-        
-        // Используем корректный URL эндпоинта (уменьшенный размер файла 2MB)
-        const size = 1 * 1024 * 1024;
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/download/${size}`);
-        
-        if (response.ok) {
+    };
+    
+    // Функция для тестирования выгрузки (upload)
+    const testUpload = async (): Promise<number> => {
+        try {
+            if (!selectedServer) {
+                throw new Error('Сервер не выбран');
+            }
+            
+            // Создаем данные для отправки (уменьшенный размер)
+            const dataSize = 1024 * 1024 * 1; // 1 MB
+            const randomData = new ArrayBuffer(dataSize);
+            const blob = new Blob([randomData], { type: 'application/octet-stream' });
+            
+            // Создаем форму для multipart/form-data
+            const formData = new FormData();
+            formData.append('file', new File([blob], 'speedtest.bin', { type: 'application/octet-stream' }));
+            
             const startTime = Date.now();
-            await response.arrayBuffer(); // Дожидаемся полной загрузки данных
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/upload`, {
+                method: 'POST',
+                body: formData
+            });
             const endTime = Date.now();
             
-            // Считаем скорость в Mbps
-            const duration = (endTime - startTime) / 1000; // в секундах
-            const speedMbps = (size * 8) / 1000000 / duration; // биты в Мбиты/с
+            if (response.ok) {
+                // Рассчитываем скорость в Mbps
+                const duration = (endTime - startTime) / 1000; // в секундах
+                const speedMbps = (dataSize * 8) / 1000000 / duration; // из бит в Мбит/с
+                
+                return speedMbps;
+            }
             
-            return speedMbps;
+            throw new Error('Не удалось получить скорость выгрузки');
+        } catch (error) {
+            console.error('Ошибка при тестировании скорости выгрузки:', error);
+            return 0;
         }
-        
-        throw new Error('Не удалось получить скорость загрузки');
-    } catch (error) {
-        console.error('Ошибка при тестировании скорости загрузки:', error);
-        return 0;
-    }
-};
-    
-// Функция для тестирования выгрузки (upload)
-const testUpload = async (): Promise<number> => {
-    try {
-        if (!selectedServer) {
-            throw new Error('Сервер не выбран');
-        }
-        
-        // Создаем данные для отправки (уменьшенный размер)
-        const dataSize = 1024 * 1024 * 1; // 1 MB
-        const randomData = new ArrayBuffer(dataSize);
-        const blob = new Blob([randomData], { type: 'application/octet-stream' });
-        
-        // Создаем форму для multipart/form-data
-        const formData = new FormData();
-        formData.append('file', new File([blob], 'speedtest.bin', { type: 'application/octet-stream' }));
-        
-        const startTime = Date.now();
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/upload`, {
-            method: 'POST',
-            body: formData
-        });
-        const endTime = Date.now();
-        
-        if (response.ok) {
-            // Рассчитываем скорость в Mbps
-            const duration = (endTime - startTime) / 1000; // в секундах
-            const speedMbps = (dataSize * 8) / 1000000 / duration; // из бит в Мбит/с
-            
-            return speedMbps;
-        }
-        
-        throw new Error('Не удалось получить скорость выгрузки');
-    } catch (error) {
-        console.error('Ошибка при тестировании скорости выгрузки:', error);
-        return 0;
-    }
-};
+    };
     
     // Функция для запуска теста скорости
     const generateAndMeasureSpeed = async () => {
