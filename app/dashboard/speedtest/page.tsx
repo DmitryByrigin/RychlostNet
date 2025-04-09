@@ -245,8 +245,10 @@ const SpeedTestContent: React.FC = () => {
 
       try {
         // Получаем информацию о сервере
+        const apiServer =
+          process.env.NEXT_PUBLIC_API_SERVERS || "http://localhost:3001";
         const serverInfoResponse = await fetch(
-          "http://localhost:3001/speedtest/server-info"
+          `${apiServer}/speedtest/server-info`
         );
         const serverInfoData = await serverInfoResponse.json();
         const serverInfo = serverInfoData.servers[0];

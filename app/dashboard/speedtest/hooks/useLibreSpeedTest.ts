@@ -27,7 +27,7 @@ export const useLibreSpeedTest = () => {
     const CACHE_DURATION = 5 * 60 * 1000; // 5 минут в миллисекундах
     
     // Константы для использования нашего бэкенда в качестве прокси
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_SERVERS || 'http://localhost:3001';
     const LIBRESPEED_ENDPOINT = `${API_BASE_URL}/api/speedtest/librespeed`;
     
     // Функция для определения ближайшего сервера с приоритетом для Словакии
