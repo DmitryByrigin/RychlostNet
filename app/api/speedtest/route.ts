@@ -267,7 +267,35 @@ export async function GET(req: NextRequest) {
             }
         });
 
-        return new NextResponse(JSON.stringify(history), { 
+        // Преобразуем данные, чтобы добавить дополнительные поля
+        const enhancedHistory = history.map(test => {
+            // Для обратной совместимости: извлекаем userLocation и serverName из поля location
+            let userLocation = test.userLocation || 'Unknown';
+            let serverName = test.serverName || 'Unknown';
+            // Используем существующее значение serverLocation из БД, если есть
+            let serverLocation = test.serverLocation || 'Unknown';
+            
+            if (test.location && (!test.userLocation || !test.serverName)) {
+                // Формат: "userLocation -> serverName"
+                const parts = test.location.split('->');
+                if (parts.length === 2) {
+                    // Обновляем только если поля пустые или не существуют
+                    userLocation = test.userLocation || parts[0].trim();
+                    serverName = test.serverName || parts[1].trim();
+                    // НЕ перезаписываем serverLocation, если оно уже есть
+                }
+            }
+            
+            return {
+                ...test,
+                userLocation,
+                serverName,
+                serverLocation,
+                jitter: test.jitter || 0, // Используем существующее значение jitter или 0 по умолчанию
+            };
+        });
+
+        return new NextResponse(JSON.stringify(enhancedHistory), { 
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });

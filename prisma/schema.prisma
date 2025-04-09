@@ -1,12 +1,27 @@
-// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model SpeedTestHistory {
+  timestamp     DateTime @default(now())
+  downloadSpeed Float
+  uploadSpeed   Float
+  ping          Float
+  location      String?
+  isp           String
+  userId        String
+  id            String   @id @default(cuid())
+
+  serverName     String?
+  serverLocation String?
+  userLocation   String?
+  jitter         Float?
 }
 
 enum UserRole {
@@ -46,33 +61,6 @@ model Account {
   @@unique([provider, providerAccountId])
 }
 
-model VerificationToken {
-  id      String   @id @default(cuid())
-  email   String
-  token   String   @unique
-  expires DateTime
-
-  @@unique([email, token])
-}
-
-model PasswordResetToken {
-  id      String   @id @default(cuid())
-  email   String
-  token   String   @unique
-  expires DateTime
-
-  @@unique([email, token])
-}
-
-model TwoFactorToken {
-  id      String   @id @default(cuid())
-  email   String
-  token   String   @unique
-  expires DateTime
-
-  @@unique([email, token])
-}
-
 model TwoFactorConfirmation {
   id String @id @default(cuid())
 
@@ -80,20 +68,4 @@ model TwoFactorConfirmation {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
-}
-
-model SpeedTestHistory {
-  id             String   @id @default(cuid())
-  timestamp      DateTime @default(now())
-  downloadSpeed  Float
-  uploadSpeed    Float
-  ping           Float
-  jitter         Float?
-  userLocation   String?
-  isp            String?
-  serverName     String?
-  serverLocation String?
-  userId         String?
-  provider       String?
-  testType       String?
 }

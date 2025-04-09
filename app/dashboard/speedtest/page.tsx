@@ -55,6 +55,7 @@ const SpeedTestContent: React.FC = () => {
     progress: libreProgress,
     runSpeedTest: runLibreSpeedTest,
     libreSpeedResult,
+    checkingServers,
   } = useLibreSpeedTest();
 
   // Добавляем хук Fast.com
@@ -87,6 +88,16 @@ const SpeedTestContent: React.FC = () => {
     ping: pingStats,
   });
 
+  // Новое состояние для хранения окончательных результатов из компонента
+  const [finalResults, setFinalResults] = useState<{
+    ping: { value: number; source: string };
+    download: { value: number; source: string };
+    upload: { value: number; source: string };
+  } | null>(null);
+
+  // Флаг, указывающий, что результаты были уже сохранены
+  const [resultsSaved, setResultsSaved] = useState(false);
+
   useEffect(() => {
     if (geolocationData) {
       setLoading(false);
@@ -114,12 +125,27 @@ const SpeedTestContent: React.FC = () => {
       const libreDownload = libreSpeedResult.download;
       const libreUpload = libreSpeedResult.upload;
 
-      // Fast.com возвращает только скорость загрузки, используем ее для обоих направлений
-      const fastDownload = fastSpeedResult || 0;
-      // Поскольку Fast.com не измеряет скорость загрузки, используем соотношение из LibreSpeed
-      const fastUpload = fastSpeedResult
-        ? fastSpeedResult * (libreUpload / libreDownload)
-        : 0;
+      // Извлекаем fast.com результаты - ИСПРАВЛЕНИЕ
+      const fastResultAny = fastSpeedResult as any;
+      const fastDownloadValue =
+        typeof fastDownloadSpeed === "string"
+          ? extractNumber(fastDownloadSpeed)
+          : fastResultAny && typeof fastResultAny.download === "number"
+          ? fastResultAny.download
+          : 0;
+      const fastUploadValue =
+        typeof fastUploadSpeed === "string"
+          ? extractNumber(fastUploadSpeed)
+          : fastResultAny && typeof fastResultAny.upload === "number"
+          ? fastResultAny.upload
+          : 0;
+
+      let bestDownload = Math.max(
+        originalDownload,
+        libreDownload,
+        fastDownloadValue
+      );
+      let bestUpload = Math.max(originalUpload, libreUpload, fastUploadValue);
 
       // Получаем пинг из LibreSpeed (учитываем, что это может быть объект или число)
       const librePing =
@@ -137,12 +163,12 @@ const SpeedTestContent: React.FC = () => {
         originalDownload *
         (1 +
           (libreDownload / originalDownload - 1) * downloadFactor +
-          (fastDownload / originalDownload - 1) * downloadFactor);
+          (fastDownloadValue / originalDownload - 1) * downloadFactor);
       const correctedUpload =
         originalUpload *
         (1 +
           (libreUpload / originalUpload - 1) * uploadFactor +
-          (fastUpload / originalUpload - 1) * uploadFactor);
+          (fastUploadValue / originalUpload - 1) * uploadFactor);
       const correctedPingValue =
         pingStats.avg * (1 + (librePing / pingStats.avg - 1) * pingFactor);
 
@@ -169,6 +195,11 @@ const SpeedTestContent: React.FC = () => {
   const runAllTests = useCallback(async () => {
     if (isTesting) return;
 
+    // Сбрасываем финальные результаты перед запуском нового теста
+    setFinalResults(null);
+    // Сбрасываем флаг сохранения
+    setResultsSaved(false);
+
     console.log("Running all speed tests...");
 
     try {
@@ -191,12 +222,172 @@ const SpeedTestContent: React.FC = () => {
       console.log("- LibreSpeed:", libreResult);
       console.log("- Fast.com:", fastResult);
 
-      // Здесь можно добавить логику корректировки результатов
-      // на основе всех трех источников
+      // Остальные данные будут обработаны в handleResultsCalculated
     } catch (error) {
       console.error("Error running speed tests:", error);
     }
   }, [generateAndMeasureSpeed, runLibreSpeedTest, runFastSpeedTest, isTesting]);
+
+  // Функция для сохранения результатов теста
+  const saveTestResults = useCallback(
+    async (results: {
+      ping: { value: number; source: string };
+      download: { value: number; source: string };
+      upload: { value: number; source: string };
+    }) => {
+      // Проверяем, были ли результаты уже сохранены
+      if (resultsSaved) {
+        console.log("Результаты уже были сохранены, пропускаем");
+        return;
+      }
+
+      console.log("Saving test results:", results);
+
+      try {
+        // Получаем информацию о сервере
+        const serverInfoResponse = await fetch(
+          "http://localhost:3001/speedtest/server-info"
+        );
+        const serverInfoData = await serverInfoResponse.json();
+        const serverInfo = serverInfoData.servers[0];
+
+        // Создаем данные для API, используя информацию о сервере и финальные результаты
+        const bodyData = {
+          downloadSpeed: results.download.value,
+          uploadSpeed: results.upload.value,
+          ping: results.ping.value,
+          serverName: serverInfo.name,
+          serverLocation: `${serverInfo.location.city || ""}, ${
+            serverInfo.location.region || ""
+          }, ${serverInfo.location.country || ""}`.replace(
+            /^[, ]+|[, ]+$/g,
+            ""
+          ),
+          userLocation: `${geolocationData?.city || ""}, ${
+            geolocationData?.country || ""
+          }`,
+          isp: geolocationData?.org || serverInfo.location.org,
+        };
+
+        console.log("Данные для сохранения:", bodyData);
+
+        const apiRequestBody = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(bodyData),
+        };
+
+        console.log("Отправка результатов на сервер API напрямую...");
+
+        // Отправляем запрос к API для сохранения
+        const response = await fetch("/api/speedtest-direct", apiRequestBody);
+
+        // Читаем ответ один раз и сохраняем как JSON
+        const responseData = await response.json();
+        console.log("Ответ от сервера:", responseData);
+
+        if (!response.ok) {
+          console.error("Ошибка при сохранении результатов:", responseData);
+          console.error("Статус ответа:", response.status);
+
+          // Если прямой API недоступен, используем старый API
+          console.log("Использование альтернативного метода сохранения...");
+
+          // Подготавливаем данные для сохранения в старом формате
+          const formData = new FormData();
+          const dummyFile = new Blob([new ArrayBuffer(1024 * 1024)], {
+            type: "application/octet-stream",
+          });
+          formData.append("files", dummyFile, "noiseData_1024.bin");
+
+          // Собираем информацию о сервере в старом формате
+          const serverInfoFallback = {
+            name: "RychlostNet Combined",
+            location: {
+              city: libreSpeedResult?.server?.location?.city || "Unknown",
+              region: libreSpeedResult?.server?.location?.region || "Unknown",
+              country:
+                libreSpeedResult?.server?.location?.country ||
+                selectedServer?.location?.country ||
+                "Unknown",
+            },
+            userLocation: {
+              city: geolocationData?.city || "Unknown",
+              region: "Unknown",
+              country: geolocationData?.country || "Unknown",
+              ip: geolocationData?.ip || "",
+            },
+            isp: geolocationData?.org || "Unknown",
+          };
+
+          formData.append("serverInfo", JSON.stringify(serverInfoFallback));
+
+          // Добавляем данные теста для корректировки
+          const cliTestData = {
+            downloadSpeed: `${results.download.value.toFixed(2)} Mbps`,
+            uploadSpeed: `${results.upload.value.toFixed(2)} Mbps`,
+            ping: {
+              min: 0,
+              max: 0,
+              avg: results.ping.value,
+              jitter: 0,
+            },
+          };
+          formData.append("cliTestData", JSON.stringify(cliTestData));
+
+          // Отправляем запрос к старому API
+          console.log("Отправка запроса к существующему API...");
+          const fallbackResponse = await fetch("/api/speedtest", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (fallbackResponse.ok) {
+            const fallbackResponseData = await fallbackResponse.json();
+            console.log(
+              "Результаты успешно сохранены через fallback API:",
+              fallbackResponseData
+            );
+          } else {
+            const fallbackErrorText = await fallbackResponse.text();
+            console.error(
+              "Не удалось сохранить результаты через fallback API:",
+              fallbackErrorText
+            );
+          }
+        } else {
+          console.log("Результаты успешно сохранены:", responseData);
+        }
+
+        // Отмечаем, что результаты были сохранены
+        setResultsSaved(true);
+      } catch (saveError) {
+        console.error(
+          "Ошибка при автоматическом сохранении результатов:",
+          saveError
+        );
+      }
+    },
+    [geolocationData, libreSpeedResult, selectedServer, resultsSaved]
+  );
+
+  // Обработчик для получения финальных результатов из компонента CorrectedResults
+  const handleResultsCalculated = useCallback(
+    (results: {
+      ping: { value: number; source: string };
+      download: { value: number; source: string };
+      upload: { value: number; source: string };
+    }) => {
+      console.log("Received final results:", results);
+      setFinalResults(results);
+
+      // Сразу сохраняем результаты без ожидания обновления состояния
+      saveTestResults(results);
+    },
+    [saveTestResults]
+  );
 
   const networkStats = [
     {
@@ -298,15 +489,14 @@ const SpeedTestContent: React.FC = () => {
           <SpeedTestControls
             isTesting={isTesting}
             onStartTest={runAllTests}
-            hasAvailableServers={filteredServers.length > 0}
+            hasAvailableServers={filteredServers.length > 0 && !checkingServers}
           />
         </Center>
 
-        {/* Информация о калибровке */}
-        {(libreSpeedResult || fastSpeedResult) && (
+        {checkingServers && (
           <Center>
             <Text size="xs" color="dimmed" mt="xs">
-              Результаты калиброваны с использованием LibreSpeed и Fast.com
+              Checking server availability...
             </Text>
           </Center>
         )}
@@ -347,7 +537,8 @@ const SpeedTestContent: React.FC = () => {
         </Card>
       </Grid.Col>
 
-      <Grid.Col span={12}>
+      {/* Скрытый блок RychlostNet Test Results */}
+      <Grid.Col span={12} style={{ display: "none" }}>
         <Card withBorder radius="md" className={classes.card}>
           <Group justify="space-between">
             <Text className={classes.title}>RychlostNet Test Results</Text>
@@ -356,7 +547,8 @@ const SpeedTestContent: React.FC = () => {
         </Card>
       </Grid.Col>
 
-      <Grid.Col span={12}>
+      {/* Скрытый блок LibreSpeed Test Results */}
+      <Grid.Col span={12} style={{ display: "none" }}>
         <Card withBorder radius="md" className={classes.card}>
           <Group justify="space-between">
             <Text className={classes.title}>LibreSpeed Test Results</Text>
@@ -365,7 +557,8 @@ const SpeedTestContent: React.FC = () => {
         </Card>
       </Grid.Col>
 
-      <Grid.Col span={12}>
+      {/* Скрытый блок Fast.com Test Results */}
+      <Grid.Col span={12} style={{ display: "none" }}>
         <Card withBorder radius="md" className={classes.card}>
           <Group justify="space-between">
             <Text className={classes.title}>Fast.com Test Results</Text>
@@ -374,69 +567,68 @@ const SpeedTestContent: React.FC = () => {
         </Card>
       </Grid.Col>
 
-      {/* Добавляем компонент скорректированных результатов только когда все тесты завершены */}
-      {!isTesting && downloadSpeed && libreSpeedResult && fastSpeedResult && (
-        <Grid.Col span={12}>
-          <CorrectedResults
-            ownTestResult={
-              downloadSpeed && uploadSpeed && pingStats.avg > 0
-                ? {
-                    download: Number(downloadSpeed.replace(" Mbps", "")),
-                    upload: Number(uploadSpeed.replace(" Mbps", "")),
-                    ping: pingStats,
-                    jitter: pingStats.jitter,
-                    ip: geolocationData?.ip || "",
-                    server: selectedServer,
-                    timestamp: new Date().toISOString(),
-                  }
-                : null
-            }
-            libreSpeedResult={
-              libreSpeedResult
-                ? {
-                    download: libreSpeedResult.download,
-                    upload: libreSpeedResult.upload,
-                    ping: {
-                      min: libreSpeedResult.ping.min,
-                      max: libreSpeedResult.ping.max,
-                      avg: libreSpeedResult.ping.avg,
-                      jitter: libreSpeedResult.jitter || 0
-                    },
+      {/* Отображаем компонент результатов всегда, даже в начале */}
+      <Grid.Col span={12}>
+        <CorrectedResults
+          isTesting={isTesting}
+          ownTestResult={
+            downloadSpeed && uploadSpeed && pingStats.avg > 0
+              ? {
+                  download: Number(downloadSpeed.replace(" Mbps", "")),
+                  upload: Number(uploadSpeed.replace(" Mbps", "")),
+                  ping: pingStats,
+                  jitter: pingStats.jitter,
+                  ip: geolocationData?.ip || "",
+                  server: selectedServer,
+                  timestamp: new Date().toISOString(),
+                }
+              : null
+          }
+          libreSpeedResult={
+            libreSpeedResult
+              ? {
+                  download: libreSpeedResult.download,
+                  upload: libreSpeedResult.upload,
+                  ping: {
+                    min: libreSpeedResult.ping.min,
+                    max: libreSpeedResult.ping.max,
+                    avg: libreSpeedResult.ping.avg,
                     jitter: libreSpeedResult.jitter || 0,
-                    ip: libreSpeedResult.ip || "",
-                    server: libreSpeedResult.server,
-                    timestamp: libreSpeedResult.timestamp || new Date().toISOString(),
-                  }
-                : null
-            }
-            fastComResult={
-              fastSpeedResult && fastPingStats.avg > 0
-                ? {
-                    download: fastSpeedResult,
-                    upload: fastUploadSpeed
-                      ? Number(fastUploadSpeed.replace(" Mbps", ""))
-                      : 0,
-                    ping: fastPingStats,
-                    jitter: fastPingStats.jitter,
-                    ip: geolocationData?.ip || "",
-                    server: selectedServer,
-                    timestamp: new Date().toISOString(),
-                  }
-                : null
-            }
-          />
-        </Grid.Col>
-      )}
+                  },
+                  jitter: libreSpeedResult.jitter || 0,
+                  ip: libreSpeedResult.ip || "",
+                  server: libreSpeedResult.server,
+                  timestamp:
+                    libreSpeedResult.timestamp || new Date().toISOString(),
+                }
+              : null
+          }
+          fastComResult={
+            fastSpeedResult && fastPingStats.avg > 0
+              ? {
+                  download: fastSpeedResult,
+                  upload: fastUploadSpeed
+                    ? Number(fastUploadSpeed.replace(" Mbps", ""))
+                    : 0,
+                  ping: fastPingStats,
+                  jitter: fastPingStats.jitter,
+                  ip: geolocationData?.ip || "",
+                  server: selectedServer,
+                  timestamp: new Date().toISOString(),
+                }
+              : null
+          }
+          onResultsCalculated={handleResultsCalculated}
+        />
+      </Grid.Col>
     </Grid>
   );
 };
 
-const SpeedTest: React.FC = () => {
+export default function SpeedTest() {
   return (
     <ServerProvider>
       <SpeedTestContent />
     </ServerProvider>
   );
-};
-
-export default SpeedTest;
+}

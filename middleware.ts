@@ -24,13 +24,15 @@ export default auth((req, ctx) => {
                           nextUrl.pathname.startsWith('/api/fasttoken') || 
                           nextUrl.pathname.startsWith('/api/fasturls') ||
                           nextUrl.pathname.startsWith('/api/fastcom-check');
+  // Добавляем новый endpoint для direct сохранения результатов
+  const isSpeedTestDirectRoute = nextUrl.pathname.startsWith('/api/speedtest-direct');
 
   if (isApiAuthRoute) {
     return;
   }
   
-  // Пропускаем все запросы к LibreSpeed API и Fast.com API
-  if (isLibreSpeedRoute || isFastComRoute) {
+  // Пропускаем все запросы к LibreSpeed API, Fast.com API и прямому сохранению
+  if (isLibreSpeedRoute || isFastComRoute || isSpeedTestDirectRoute) {
     console.log('Middleware: разрешен доступ без авторизации к:', nextUrl.pathname);
     return;
   }
@@ -63,7 +65,7 @@ export const config = {
   matcher: [
     '/((?!.+\\.[\\w]+$|_next).*)', 
     '/', 
-    // Обновляем matcher, чтобы исключить маршруты librespeed и fastcom
-    '/(api|trpc)((?!/librespeed)(?!/fastcom)(?!/fasttoken)(?!/fasturls)(?!/fastcom-check).*)',
+    // Обновляем matcher, чтобы исключить нужные маршруты
+    '/(api|trpc)((?!/librespeed)(?!/fastcom)(?!/fasttoken)(?!/fasturls)(?!/fastcom-check)(?!/speedtest-direct).*)',
   ],
 };

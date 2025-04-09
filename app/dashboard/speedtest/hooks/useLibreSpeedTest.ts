@@ -18,6 +18,7 @@ export const useLibreSpeedTest = () => {
     const [isRunning, setIsRunning] = useState(false);
     const [result, setResult] = useState<SpeedTestResult | null>(null);
     const [currentTest, setCurrentTest] = useState<string | null>(null);
+    const [checkingServers, setCheckingServers] = useState<boolean>(true);
     
     const testInProgressRef = useRef<boolean>(false);
     const { geolocationData } = useServer();
@@ -66,7 +67,8 @@ export const useLibreSpeedTest = () => {
     const checkServerAvailability = async (server: string): Promise<boolean> => {
         try {
             // Используем наш прокси для проверки сервера
-            const testUrl = `${LIBRESPEED_ENDPOINT}/check?server=${encodeURIComponent(server)}`;
+            // Добавляем только параметр noCache для предотвращения кэширования запросов
+            const testUrl = `${LIBRESPEED_ENDPOINT}/check?server=${encodeURIComponent(server)}&noCache=${Date.now()}`;
             const response = await fetch(testUrl, {
                 method: 'GET',
                 cache: 'no-cache',
@@ -89,6 +91,9 @@ export const useLibreSpeedTest = () => {
     useEffect(() => {
         const fetchServers = async () => {
             try {
+                // Начинаем проверку серверов
+                setCheckingServers(true);
+                
                 // Проверяем локальный кэш
                 const cacheKey = 'librespeed_servers_cache';
                 const cacheStr = localStorage.getItem(cacheKey);
@@ -105,6 +110,9 @@ export const useLibreSpeedTest = () => {
                                 const bestServer = findBestServer(cache.data, geolocationData?.country);
                                 setSelectedServer(bestServer);
                             }
+                            
+                            // Завершаем проверку серверов из кэша
+                            setCheckingServers(false);
                             return;
                         }
                     } catch (e) {
@@ -150,6 +158,8 @@ export const useLibreSpeedTest = () => {
                                 timestamp: Date.now()
                             }));
                             
+                            // Завершаем проверку серверов
+                            setCheckingServers(false);
                             return;
                         }
                     }
@@ -270,6 +280,7 @@ export const useLibreSpeedTest = () => {
                     console.log('Проверка доступности серверов...');
                     const availableServers: LibreSpeedServer[] = [];
                     
+                    // Проверяем все сервера 
                     for (const server of staticLibreSpeedServers) {
                         const isAvailable = await checkServerAvailability(server.server);
                         if (isAvailable) {
@@ -304,6 +315,9 @@ export const useLibreSpeedTest = () => {
                         setSelectedServer(bestServer);
                     }
                 }
+                
+                // Завершаем проверку серверов
+                setCheckingServers(false);
             } catch (error) {
                 console.error('Ошибка при загрузке списка серверов LibreSpeed:', error);
                 
@@ -449,6 +463,7 @@ export const useLibreSpeedTest = () => {
         setSelectedServer,
         isRunning,
         result,
-        currentTest
+        currentTest,
+        checkingServers
     };
 };

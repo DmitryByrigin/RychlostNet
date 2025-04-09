@@ -1,11 +1,17 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Card, Text, Stack, Group } from "@mantine/core";
 import { SpeedTestResult } from "../hooks/utils/types";
 
-interface CorrectedResultsProps {
+export interface CorrectedResultsProps {
   ownTestResult: SpeedTestResult | null;
   libreSpeedResult: SpeedTestResult | null;
   fastComResult: SpeedTestResult | null;
+  isTesting?: boolean;
+  onResultsCalculated?: (results: {
+    ping: { value: number; source: string };
+    download: { value: number; source: string };
+    upload: { value: number; source: string };
+  }) => void;
 }
 
 interface CorrectedValue {
@@ -17,6 +23,13 @@ interface CorrectedResults {
   ping: CorrectedValue;
   download: CorrectedValue;
   upload: CorrectedValue;
+}
+
+interface UserLocation {
+  city: string;
+  region: string;
+  country: string;
+  ip?: string;
 }
 
 const calculateCorrectedResults = (
@@ -106,6 +119,8 @@ export const CorrectedResults: React.FC<CorrectedResultsProps> = ({
   ownTestResult,
   libreSpeedResult,
   fastComResult,
+  isTesting = false,
+  onResultsCalculated,
 }) => {
   const correctedResults = calculateCorrectedResults(
     ownTestResult,
@@ -113,9 +128,83 @@ export const CorrectedResults: React.FC<CorrectedResultsProps> = ({
     fastComResult
   );
 
-  if (!correctedResults) {
-    return null;
+  // Используем ref для отслеживания, были ли уже отправлены результаты
+  const resultsSentRef = useRef(false);
+  // Храним предыдущие результаты для сравнения
+  const prevResultsRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (
+      correctedResults &&
+      correctedResults.ping &&
+      correctedResults.download &&
+      correctedResults.upload &&
+      onResultsCalculated
+    ) {
+      // Преобразуем текущие результаты в строку для сравнения
+      const currentResultsString = JSON.stringify({
+        ping: correctedResults.ping.value,
+        download: correctedResults.download.value,
+        upload: correctedResults.upload.value,
+      });
+
+      // Проверяем, отличаются ли текущие результаты от предыдущих
+      // и не были ли они уже отправлены
+      if (
+        currentResultsString !== prevResultsRef.current &&
+        !resultsSentRef.current
+      ) {
+        console.log("Displaying results: ", correctedResults);
+        onResultsCalculated(correctedResults);
+
+        // Отмечаем, что результаты были отправлены
+        resultsSentRef.current = true;
+        // Сохраняем текущие результаты как предыдущие
+        prevResultsRef.current = currentResultsString;
+      }
+    }
+  }, [correctedResults, onResultsCalculated]);
+
+  // Сбрасываем флаг при изменении входных параметров
+  useEffect(() => {
+    resultsSentRef.current = false;
+  }, [ownTestResult, libreSpeedResult, fastComResult]);
+
+  if (!correctedResults || isTesting) {
+    return (
+      <Card
+        withBorder
+        radius="md"
+        style={{ marginBottom: "1rem", backgroundColor: "#1a237e" }}
+      >
+        <Stack>
+          <Text fw={500} size="xl" c="white">
+            📊 Speed Test Results
+          </Text>
+          <Stack gap="xs">
+            <Group>
+              <Text c="white">
+                ⚡ Ping: {isTesting ? "Measuring..." : "-- ms"}
+              </Text>
+            </Group>
+            <Group>
+              <Text c="white">
+                ⬇️ Download: {isTesting ? "Measuring..." : "-- Mbps"}
+              </Text>
+            </Group>
+            <Group>
+              <Text c="white">
+                ⬆️ Upload: {isTesting ? "Measuring..." : "-- Mbps"}
+              </Text>
+            </Group>
+          </Stack>
+        </Stack>
+      </Card>
+    );
   }
+
+  // Показываем информацию, что результаты автоматически сохраняются
+  console.log("Displaying results:", correctedResults);
 
   return (
     <Card
@@ -125,15 +214,12 @@ export const CorrectedResults: React.FC<CorrectedResultsProps> = ({
     >
       <Stack>
         <Text fw={500} size="xl" c="white">
-          📊 Скорректированные результаты
+          📊 Speed Test Results
         </Text>
         <Stack gap="xs">
           <Group>
             <Text c="white">
               ⚡ Ping: {correctedResults.ping.value.toFixed(2)} ms
-            </Text>
-            <Text size="sm" c="dimmed" style={{ marginLeft: "0.5rem" }}>
-              (источник: {correctedResults.ping.source})
             </Text>
           </Group>
 
@@ -141,17 +227,11 @@ export const CorrectedResults: React.FC<CorrectedResultsProps> = ({
             <Text c="white">
               ⬇️ Download: {correctedResults.download.value.toFixed(2)} Mbps
             </Text>
-            <Text size="sm" c="dimmed" style={{ marginLeft: "0.5rem" }}>
-              (источник: {correctedResults.download.source})
-            </Text>
           </Group>
 
           <Group>
             <Text c="white">
               ⬆️ Upload: {correctedResults.upload.value.toFixed(2)} Mbps
-            </Text>
-            <Text size="sm" c="dimmed" style={{ marginLeft: "0.5rem" }}>
-              (источник: {correctedResults.upload.source})
             </Text>
           </Group>
         </Stack>
