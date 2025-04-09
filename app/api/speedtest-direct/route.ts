@@ -12,9 +12,13 @@ export async function POST(req: NextRequest) {
         const session = await auth();
         const userId = session?.user?.id;
 
+        // Если пользователь не авторизован, просто возвращаем ошибку без сохранения
         if (!userId) {
-            console.log('Прямое сохранение пропущено: пользователь не авторизован');
-            return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), { 
+            console.log('Пользователь не авторизован, результаты НЕ будут сохранены');
+            return new NextResponse(JSON.stringify({ 
+                error: 'Unauthorized',
+                message: 'You must be logged in to save test results'
+            }), { 
                 status: 401,
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -22,22 +26,19 @@ export async function POST(req: NextRequest) {
 
         // Получаем данные из запроса
         const data = await req.json();
-        console.log('Прямое сохранение: получены данные:', data);
+        console.log('Получены данные для сохранения:', data);
 
         // Проверяем наличие необходимых полей и их корректность
         const downloadSpeed = Number(data.downloadSpeed);
         const uploadSpeed = Number(data.uploadSpeed);
         const ping = Number(data.ping);
 
-        console.log('Прямое сохранение: проверка значений:',
-            { downloadSpeed, uploadSpeed, ping, 
-              isNaN_downloadSpeed: isNaN(downloadSpeed),
-              isNaN_uploadSpeed: isNaN(uploadSpeed),
-              isNaN_ping: isNaN(ping) });
+        console.log('Проверка значений:', 
+            { downloadSpeed, uploadSpeed, ping });
 
         if (isNaN(downloadSpeed) || isNaN(uploadSpeed) || isNaN(ping) || 
             downloadSpeed <= 0 || uploadSpeed <= 0 || ping <= 0) {
-            console.log('Прямое сохранение: не предоставлены корректные числовые значения');
+            console.log('Не предоставлены корректные числовые значения');
             return new NextResponse(JSON.stringify({ 
                 error: 'Missing required fields',
                 details: {
@@ -51,39 +52,52 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Создаем запись в базе данных
-        console.log('Прямое сохранение: сохраняем в БД для пользователя', userId);
+        // Проверяем существование пользователя
+        const userExists = await db.user.findUnique({
+            where: { id: userId }
+        });
         
-        // Сохраняем результаты теста, используя только поля из схемы Prisma
+        if (!userExists) {
+            console.log('Пользователь с ID не найден:', userId);
+            return new NextResponse(JSON.stringify({ 
+                error: 'User not found',
+                message: 'Your user account could not be found'
+            }), { 
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // Сохраняем результаты с привязкой к пользователю
+        console.log('Сохраняем результаты в БД для пользователя:', userId);
+        
         const testRecord = await db.speedTestHistory.create({
             data: {
                 downloadSpeed: downloadSpeed,
                 uploadSpeed: uploadSpeed,
                 ping: ping,
-                // Используем комбинацию информации о сервере и местоположении пользователя
                 location: `${data.userLocation} -> ${data.serverName}`,
                 isp: data.isp || 'Unknown',
                 userId: userId,
-                // Добавляем дополнительные поля для хранения в базе данных
                 serverName: data.serverName || 'Unknown',
                 serverLocation: data.serverLocation || 'Unknown',
                 userLocation: data.userLocation || 'Unknown',
                 jitter: data.jitter || 0
             }
         });
-
-        console.log('Прямое сохранение: результаты успешно сохранены');
+        
+        console.log('Результаты успешно сохранены с ID:', testRecord.id);
         
         return new NextResponse(JSON.stringify({ 
             success: true,
-            message: 'Speed test results saved directly',
+            message: 'Speed test results saved successfully',
             id: testRecord.id
         }), { 
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (error) {
-        console.error('Ошибка при прямом сохранении результатов теста:', error);
+        console.error('Ошибка при сохранении результатов теста:', error);
         return new NextResponse(JSON.stringify({ 
             error: 'Internal server error',
             message: error instanceof Error ? error.message : 'Unknown error' 
