@@ -59,9 +59,14 @@ const calculateCorrectedResults = (
     if (ownTest.ping.avg < corrected.ping.value) {
       corrected.ping = { value: ownTest.ping.avg, source: "RychlostNet" };
     }
-    if (ownTest.download > corrected.download.value) {
-      corrected.download = { value: ownTest.download, source: "RychlostNet" };
+
+    // Для download используем Fast.com, поэтому сохраняем ownTest только если нет Fast.com
+    if (!fastCom || typeof fastCom.download !== "number") {
+      if (ownTest.download > corrected.download.value) {
+        corrected.download = { value: ownTest.download, source: "RychlostNet" };
+      }
     }
+
     if (ownTest.upload > corrected.upload.value) {
       corrected.upload = { value: ownTest.upload, source: "RychlostNet" };
     }
@@ -77,9 +82,17 @@ const calculateCorrectedResults = (
     if (libreSpeed.ping.avg < corrected.ping.value) {
       corrected.ping = { value: libreSpeed.ping.avg, source: "LibreSpeed" };
     }
-    if (libreSpeed.download > corrected.download.value) {
-      corrected.download = { value: libreSpeed.download, source: "LibreSpeed" };
+
+    // Для download используем Fast.com, поэтому сохраняем LibreSpeed только если нет Fast.com
+    if (!fastCom || typeof fastCom.download !== "number") {
+      if (libreSpeed.download > corrected.download.value) {
+        corrected.download = {
+          value: libreSpeed.download,
+          source: "LibreSpeed",
+        };
+      }
     }
+
     if (libreSpeed.upload > corrected.upload.value) {
       corrected.upload = { value: libreSpeed.upload, source: "LibreSpeed" };
     }
@@ -95,9 +108,10 @@ const calculateCorrectedResults = (
     if (fastCom.ping.avg < corrected.ping.value) {
       corrected.ping = { value: fastCom.ping.avg, source: "Fast.com" };
     }
-    if (fastCom.download > corrected.download.value) {
-      corrected.download = { value: fastCom.download, source: "Fast.com" };
-    }
+
+    // Всегда используем Fast.com для download если он доступен
+    corrected.download = { value: fastCom.download, source: "Fast.com" };
+
     if (fastCom.upload > corrected.upload.value) {
       corrected.upload = { value: fastCom.upload, source: "Fast.com" };
     }
