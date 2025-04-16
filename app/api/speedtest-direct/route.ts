@@ -82,7 +82,8 @@ export async function POST(req: NextRequest) {
                 serverName: data.serverName || 'Unknown',
                 serverLocation: data.serverLocation || 'Unknown',
                 userLocation: data.userLocation || 'Unknown',
-                jitter: data.jitter || 0
+                jitter: typeof data.jitter === 'number' ? data.jitter : 0,
+                testType: 'combined'
             }
         });
         

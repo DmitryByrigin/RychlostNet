@@ -35,7 +35,25 @@ export const login = async (
 
   const existingUser = await getUserByEmail(email);
 
-  if (!existingUser || !existingUser.email || !existingUser.password) {
+  if (!existingUser || !existingUser.email) {
+    return { error: "Email does not exist!" }
+  }
+
+  if (!existingUser.password) {
+    const accounts = await db.account.findMany({
+      where: {
+        userId: existingUser.id
+      }
+    });
+    
+    if (accounts.length > 0) {
+      const providers = accounts.map(account => 
+        account.provider.charAt(0).toUpperCase() + account.provider.slice(1)
+      ).join(", ");
+      
+      return { error: `This email is registered with ${providers}.` }
+    }
+    
     return { error: "Email does not exist!" }
   }
 

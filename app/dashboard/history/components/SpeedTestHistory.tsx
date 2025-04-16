@@ -9,14 +9,25 @@ import {
   Stack,
   Text,
   ThemeIcon,
+  Badge,
+  Tooltip,
 } from "@mantine/core";
 import {
   IconSortAscending,
   IconSortDescending,
   IconTrash,
   IconHistory,
+  IconUserCircle,
 } from "@tabler/icons-react";
 import classes from "../SpeedTestHistory.module.css";
+import { notifications } from "@mantine/notifications";
+import { useCurrentUser } from "@/hooks/use-current-user";
+
+interface UserInfo {
+  id: string;
+  name: string | null;
+  email: string | null;
+}
 
 interface SpeedTestHistoryType {
   id: string;
@@ -30,22 +41,37 @@ interface SpeedTestHistoryType {
   serverName: string | null;
   serverLocation: string | null;
   userId: string | null;
+  user?: UserInfo;
 }
 
 const SpeedTestHistoryComponent: React.FC = () => {
+  const user = useCurrentUser();
   const [data, setData] = useState<SpeedTestHistoryType[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [sortColumn, setSortColumn] = useState<
     keyof SpeedTestHistoryType | null
   >(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
+    if (user) {
+      const userIsAdmin = user.role === "ADMIN";
+      setIsAdmin(userIsAdmin);
+      console.log("User role from session:", {
+        isAdmin: userIsAdmin,
+        role: user.role,
+        name: user.name,
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/speedtest");
+        const response = await fetch("/api/speedtest?userOnly=true");
 
         if (!response.ok) {
           if (response.status === 401) {
@@ -57,11 +83,13 @@ const SpeedTestHistoryComponent: React.FC = () => {
         }
 
         const data = await response.json();
-        const formattedData = data.map((item: SpeedTestHistoryType) => ({
+        const formattedData = data.map((item: any) => ({
           ...item,
           timestamp: new Date(item.timestamp),
         }));
+
         console.log("History data:", formattedData);
+
         setData(formattedData);
       } catch (error) {
         console.error("Error fetching history:", error);
@@ -87,29 +115,98 @@ const SpeedTestHistoryComponent: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     try {
+      // Оптимистично обновляем UI перед отправкой запроса
+      const updatedData = data.filter((test) => test.id !== id);
+      setData(updatedData);
+
+      // Показываем уведомление об удалении (можно добавить индикатор загрузки)
+      const notification = notifications.show({
+        id: `delete-${id}`,
+        title: "Удаление...",
+        message: "Удаление записи",
+        color: "blue",
+        loading: true,
+        autoClose: false,
+      });
+
+      // Отправляем запрос на удаление
       const response = await fetch(`/api/speedtest/${id}`, {
         method: "DELETE",
       });
+
       if (!response.ok) {
+        // В случае ошибки восстанавливаем данные
+        setData(data);
         throw new Error("Failed to delete test");
       }
-      setData(data.filter((test) => test.id !== id));
+
+      // Обновляем уведомление при успешном удалении
+      notifications.update({
+        id: `delete-${id}`,
+        title: "Успешно",
+        message: "Запись удалена",
+        color: "green",
+        loading: false,
+        autoClose: 3000,
+      });
     } catch (error) {
       console.error("Error deleting test:", error);
+
+      // Показываем уведомление об ошибке
+      notifications.show({
+        title: "Ошибка",
+        message:
+          error instanceof Error ? error.message : "Failed to delete test",
+        color: "red",
+      });
     }
   };
 
   const handleDeleteAll = async () => {
     try {
+      // Оптимистично обновляем UI перед отправкой запроса
+      const oldData = [...data];
+      setData([]);
+
+      // Показываем уведомление об удалении
+      const notification = notifications.show({
+        id: "delete-all",
+        title: "Удаление...",
+        message: "Удаление всех записей",
+        color: "blue",
+        loading: true,
+        autoClose: false,
+      });
+
       const response = await fetch("/api/speedtest", {
         method: "DELETE",
       });
+
       if (!response.ok) {
+        // В случае ошибки восстанавливаем данные
+        setData(oldData);
         throw new Error("Failed to delete all tests");
       }
-      setData([]);
+
+      // Обновляем уведомление при успешном удалении
+      notifications.update({
+        id: "delete-all",
+        title: "Успешно",
+        message: "Все записи удалены",
+        color: "green",
+        loading: false,
+        autoClose: 3000,
+      });
     } catch (error) {
       console.error("Error deleting all tests:", error);
+
+      // Показываем уведомление об ошибке
+      notifications.show({
+        title: "Ошибка",
+        message:
+          error instanceof Error ? error.message : "Failed to delete all tests",
+        color: "red",
+      });
     }
   };
 
@@ -154,8 +251,9 @@ const SpeedTestHistoryComponent: React.FC = () => {
             No Test History
           </Text>
           <Text size="sm" style={{ textAlign: "center" }}>
-            Your speed test history will appear here after you complete your
-            first test.
+            {isAdmin
+              ? "No speed test results have been recorded yet."
+              : "Your speed test history will appear here after you complete your first test."}
           </Text>
         </Stack>
       </Center>
@@ -165,10 +263,16 @@ const SpeedTestHistoryComponent: React.FC = () => {
   const sortedData = [...data].sort((a, b) => {
     if (!sortColumn) return 0;
 
-    const aValue = a[sortColumn];
-    const bValue = b[sortColumn];
+    const aValue = sortColumn in a ? a[sortColumn] : undefined;
+    const bValue = sortColumn in b ? b[sortColumn] : undefined;
 
-    if (aValue === null || bValue === null) return 0;
+    if (
+      aValue === null ||
+      aValue === undefined ||
+      bValue === null ||
+      bValue === undefined
+    )
+      return 0;
 
     if (sortColumn === "timestamp") {
       return sortDirection === "asc"
@@ -204,6 +308,7 @@ const SpeedTestHistoryComponent: React.FC = () => {
                     <IconSortDescending size={16} />
                   ))}
               </Table.Th>
+              {isAdmin && <Table.Th>User</Table.Th>}
               <Table.Th
                 onClick={() => handleSort("downloadSpeed")}
                 className={classes.sortableHeader}
@@ -234,6 +339,18 @@ const SpeedTestHistoryComponent: React.FC = () => {
               >
                 Ping (ms){" "}
                 {sortColumn === "ping" &&
+                  (sortDirection === "asc" ? (
+                    <IconSortAscending size={16} />
+                  ) : (
+                    <IconSortDescending size={16} />
+                  ))}
+              </Table.Th>
+              <Table.Th
+                onClick={() => handleSort("jitter")}
+                className={classes.sortableHeader}
+              >
+                Jitter (ms){" "}
+                {sortColumn === "jitter" &&
                   (sortDirection === "asc" ? (
                     <IconSortAscending size={16} />
                   ) : (
@@ -297,9 +414,28 @@ const SpeedTestHistoryComponent: React.FC = () => {
             {sortedData.map((test) => (
               <Table.Tr key={test.id}>
                 <Table.Td>{formatDate(test.timestamp)}</Table.Td>
+                {isAdmin && (
+                  <Table.Td>
+                    {test.user ? (
+                      <Tooltip label={test.user.email || "No email"}>
+                        <Badge
+                          leftSection={<IconUserCircle size={14} />}
+                          color="blue"
+                        >
+                          {test.user.name || test.user.email || "Unknown User"}
+                        </Badge>
+                      </Tooltip>
+                    ) : (
+                      <Badge color="gray">Guest User</Badge>
+                    )}
+                  </Table.Td>
+                )}
                 <Table.Td>{formatSpeed(test.downloadSpeed)}</Table.Td>
                 <Table.Td>{formatSpeed(test.uploadSpeed)}</Table.Td>
                 <Table.Td>{formatPing(test.ping)}</Table.Td>
+                <Table.Td>
+                  {test.jitter ? formatPing(test.jitter) : "N/A"}
+                </Table.Td>
                 <Table.Td>{test.userLocation || "Unknown"}</Table.Td>
                 <Table.Td>{test.serverName || "Unknown"}</Table.Td>
                 <Table.Td>{test.serverLocation || "Unknown"}</Table.Td>

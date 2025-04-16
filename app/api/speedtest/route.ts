@@ -257,14 +257,41 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        // Получаем историю тестов для текущего пользователя
+        // Получаем информацию о пользователе, включая роль
+        const user = await db.user.findUnique({
+            where: { id: userId },
+            select: { role: true }
+        });
+
+        // Получаем параметр userOnly из URL
+        const url = new URL(req.url);
+        const userOnly = url.searchParams.get('userOnly') === 'true';
+
+        // Определяем, является ли пользователь администратором
+        const isAdmin = user?.role === "ADMIN";
+        console.log('User role check:', { userId, isAdmin, role: user?.role, userOnly });
+
+        // Определяем условие поиска:
+        // - Если userOnly=true или пользователь не админ - только свои записи
+        // - Если админ и userOnly не указан - все записи
+        const whereCondition = userOnly || !isAdmin ? { userId } : {};
+
+        // Получаем историю тестов (для админа - всех пользователей, для обычных - только свои)
         const history = await db.speedTestHistory.findMany({
-            where: {
-                userId: userId
-            },
+            where: whereCondition,
             orderBy: {
                 timestamp: 'desc'
-            }
+            },
+            // Для админа включаем информацию о пользователе
+            include: isAdmin ? {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            } : undefined
         });
 
         // Преобразуем данные, чтобы добавить дополнительные поля
@@ -286,13 +313,21 @@ export async function GET(req: NextRequest) {
                 }
             }
             
-            return {
+            // Форматируем данные для возврата
+            const resultData = {
                 ...test,
                 userLocation,
                 serverName,
                 serverLocation,
                 jitter: test.jitter || 0, // Используем существующее значение jitter или 0 по умолчанию
             };
+            
+            // Для обычных пользователей удаляем информацию о пользователе
+            if (!isAdmin && 'user' in resultData) {
+                delete (resultData as any).user;
+            }
+            
+            return resultData;
         });
 
         return new NextResponse(JSON.stringify(enhancedHistory), { 

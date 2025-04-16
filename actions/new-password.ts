@@ -41,6 +41,22 @@ export const newPassword = async (
   if (!existingUser) {
     return { error: "Email does not exist!" }
   }
+  
+  // Проверяем, нет ли у пользователя OAuth аккаунтов
+  const accounts = await db.account.findMany({
+    where: {
+      userId: existingUser.id
+    }
+  });
+  
+  if (accounts.length > 0) {
+    // Определяем провайдеров
+    const providers = accounts.map(account => 
+      account.provider.charAt(0).toUpperCase() + account.provider.slice(1)
+    ).join(", ");
+    
+    return { error: `This account uses ${providers} authentication. Password reset is not required.` }
+  }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 

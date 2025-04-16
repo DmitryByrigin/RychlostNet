@@ -234,6 +234,7 @@ const SpeedTestContent: React.FC = () => {
       ping: { value: number; source: string };
       download: { value: number; source: string };
       upload: { value: number; source: string };
+      jitter: { value: number; source: string };
     }) => {
       // Проверяем, были ли результаты уже сохранены
       if (resultsSaved) {
@@ -258,6 +259,7 @@ const SpeedTestContent: React.FC = () => {
           downloadSpeed: results.download.value,
           uploadSpeed: results.upload.value,
           ping: results.ping.value,
+          jitter: results.jitter.value,
           serverName: serverInfo.name,
           serverLocation: `${serverInfo.location.city || ""}, ${
             serverInfo.location.region || ""
@@ -269,6 +271,8 @@ const SpeedTestContent: React.FC = () => {
             geolocationData?.country || ""
           }`,
           isp: geolocationData?.org || serverInfo.location.org,
+          provider: "RychlostNet",
+          testType: "combined",
         };
 
         console.log("Данные для сохранения:", bodyData);
@@ -345,7 +349,7 @@ const SpeedTestContent: React.FC = () => {
               min: 0,
               max: 0,
               avg: results.ping.value,
-              jitter: 0,
+              jitter: results.jitter.value,
             },
           };
           formData.append("cliTestData", JSON.stringify(cliTestData));
@@ -392,9 +396,14 @@ const SpeedTestContent: React.FC = () => {
       ping: { value: number; source: string };
       download: { value: number; source: string };
       upload: { value: number; source: string };
+      jitter: { value: number; source: string };
     }) => {
       console.log("Received final results:", results);
-      setFinalResults(results);
+      setFinalResults({
+        ping: results.ping,
+        download: results.download,
+        upload: results.upload,
+      });
 
       // Сразу сохраняем результаты без ожидания обновления состояния
       saveTestResults(results);
