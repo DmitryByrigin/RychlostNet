@@ -378,7 +378,7 @@ export default function AdminSpeedTests() {
           title="Access Denied"
           color="red"
         >
-          You don't have access rights to this page. Only administrators can
+          You dont have access rights to this page. Only administrators can
           view this page.
         </Alert>
       </Container>
