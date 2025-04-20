@@ -43,6 +43,7 @@ export interface LibreSpeedServer {
   ulURL?: string;
   pingURL?: string;
   getIpURL?: string;
+  country?: string;
   sponsorName?: string;
   sponsorURL?: string;
   distance?: number;

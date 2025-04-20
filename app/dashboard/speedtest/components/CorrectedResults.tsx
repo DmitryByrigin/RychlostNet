@@ -181,7 +181,20 @@ export const CorrectedResults: React.FC<CorrectedResultsProps> = ({
         currentResultsString !== prevResultsRef.current &&
         !resultsSentRef.current
       ) {
-        console.log("Displaying results: ", correctedResults);
+        console.log("📊 Итоговые результаты измерений:", {
+          ping: `${correctedResults.ping.value.toFixed(2)} ms (${
+            correctedResults.ping.source
+          })`,
+          download: `${correctedResults.download.value.toFixed(2)} Mbps (${
+            correctedResults.download.source
+          })`,
+          upload: `${correctedResults.upload.value.toFixed(2)} Mbps (${
+            correctedResults.upload.source
+          })`,
+          jitter: `${correctedResults.jitter.value.toFixed(2)} ms (${
+            correctedResults.jitter.source
+          })`,
+        });
         onResultsCalculated(correctedResults);
 
         // Отмечаем, что результаты были отправлены

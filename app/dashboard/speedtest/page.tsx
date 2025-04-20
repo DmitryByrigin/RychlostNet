@@ -214,16 +214,30 @@ const SpeedTestContent: React.FC = () => {
     }) => {
       // Проверяем, были ли результаты уже сохранены
       if (resultsSaved) {
-        console.log("Результаты уже были сохранены, пропускаем");
+        console.log("⏭️ Результаты уже были сохранены, пропускаем");
         return;
       }
 
-      console.log("Saving test results:", results);
+      console.log("💾 Сохранение результатов теста");
+      console.log("📋 Финальные результаты:", {
+        download: `${results.download.value.toFixed(2)} Mbps (${
+          results.download.source
+        })`,
+        upload: `${results.upload.value.toFixed(2)} Mbps (${
+          results.upload.source
+        })`,
+        ping: `${results.ping.value.toFixed(2)} ms (${results.ping.source})`,
+        jitter: `${results.jitter.value.toFixed(2)} ms (${
+          results.jitter.source
+        })`,
+      });
 
       try {
         // Получаем информацию о сервере
         const apiServer =
           process.env.NEXT_PUBLIC_API_SERVERS || "http://localhost:3001";
+        console.log("🔍 Получение информации о сервере...");
+
         const serverInfoResponse = await fetch(
           `${apiServer}/speedtest/server-info`
         );

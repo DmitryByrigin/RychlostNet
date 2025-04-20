@@ -144,12 +144,12 @@ export const useLibreSpeedTest = () => {
                             if (slovakServers.length > 0) {
                                 const bestServer = findBestServer(slovakServers, 'Slovakia');
                                 setSelectedServer(bestServer);
-                                console.log(`Выбран словацкий сервер: ${bestServer.name}`);
+                                console.log(`🌍 Выбран сервер: ${bestServer.name}`);
                             } else {
                                 // Иначе используем ближайший европейский сервер
                                 const bestServer = findBestServer(data, geolocationData?.country);
                                 setSelectedServer(bestServer);
-                                console.log(`Выбран сервер: ${bestServer.name}`);
+                                console.log(`🌍 Выбран сервер: ${bestServer.name}`);
                             }
                             
                             // Кэшируем результат
@@ -277,20 +277,20 @@ export const useLibreSpeedTest = () => {
                 
                 // Теперь проверим доступность серверов и выберем лучший
                 try {
-                    console.log('Проверка доступности серверов...');
+                    console.log('🔍 Проверка доступности серверов...');
                     const availableServers: LibreSpeedServer[] = [];
                     
                     // Проверяем все сервера 
                     for (const server of staticLibreSpeedServers) {
                         const isAvailable = await checkServerAvailability(server.server);
                         if (isAvailable) {
-                            console.log(`Сервер ${server.name} доступен`);
+                            console.log(`✅ Сервер ${server.name} доступен`);
                             availableServers.push(server);
                         }
                     }
                     
                     if (availableServers.length > 0) {
-                        console.log(`Найдено ${availableServers.length} доступных серверов`);
+                        console.log(`🔢 Найдено ${availableServers.length} доступных серверов`);
                         // Обновляем список серверов только доступными серверами
                         setServers(availableServers);
                         
@@ -298,7 +298,7 @@ export const useLibreSpeedTest = () => {
                         if (!selectedServer) {
                             const bestServer = findBestServer(availableServers, geolocationData?.country);
                             setSelectedServer(bestServer);
-                            console.log(`Выбран сервер: ${bestServer.name}`);
+                            console.log(`🌍 Выбран сервер: ${bestServer.name}`);
                         }
                     } else {
                         console.log('Нет доступных серверов, используем исходный список');
@@ -339,7 +339,7 @@ export const useLibreSpeedTest = () => {
             return null;
         }
 
-        console.log(`Starting LibreSpeed test using server: ${selectedServer.name}`);
+        console.log(`🚀 Запуск теста LibreSpeed на сервере: ${selectedServer.name}`);
         
         try {
             setIsRunning(true);
@@ -358,7 +358,13 @@ export const useLibreSpeedTest = () => {
             
             if (response.ok) {
                 const responseData = await response.json();
-                console.log('LibreSpeed test completed:', responseData);
+                console.log('✅ Тест LibreSpeed завершен:', {
+                    download: `${responseData.result.download.toFixed(2)} Mbps`,
+                    upload: `${responseData.result.upload.toFixed(2)} Mbps`,
+                    ping: `${responseData.result.ping.toFixed(2)} ms`,
+                    jitter: `${responseData.result.jitter ? responseData.result.jitter.toFixed(2) : 0} ms`,
+                    server: responseData.result.server || selectedServer.name
+                });
                 
                 // Извлекаем результат, учитывая структуру ответа
                 const result = responseData.success && responseData.result ? responseData.result : responseData;
