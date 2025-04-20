@@ -30,6 +30,7 @@ import ServerService from "./components/ServerService";
 import ConnectionsService from "./components/ConnectionsService";
 import { Server } from "./types/geolocation";
 import { CorrectedResults } from "./components/CorrectedResults";
+import { DirectLibreSpeedTest } from "./components/DirectLibreSpeedTest";
 
 const SpeedTestContent: React.FC = () => {
   const { geolocationData, selectedServer } = useServer();
@@ -200,7 +201,7 @@ const SpeedTestContent: React.FC = () => {
     // Сбрасываем флаг сохранения
     setResultsSaved(false);
 
-    console.log("Running all speed tests...");
+    console.log("▶️ Запуск всех тестов скорости...");
 
     try {
       // Запускаем все тесты параллельно
@@ -217,14 +218,53 @@ const SpeedTestContent: React.FC = () => {
         fastPromise,
       ]);
 
-      console.log("All tests completed:");
-      console.log("- Own algorithm:", ownResult);
-      console.log("- LibreSpeed:", libreResult);
-      console.log("- Fast.com:", fastResult);
+      console.log("📊 РЕЗУЛЬТАТЫ ВСЕХ ТЕСТОВ:");
+
+      // Для ownResult используем тип any, чтобы обойти ошибки TypeScript
+      // поскольку в реальном вызове функция может вернуть объект с нужными свойствами
+      const typedOwnResult = ownResult as any;
+      if (typedOwnResult && typeof typedOwnResult === "object") {
+        console.log("✓ Собственный алгоритм:", {
+          download: typedOwnResult.download
+            ? `${typedOwnResult.download.toFixed(2)} Mbps`
+            : "N/A",
+          upload: typedOwnResult.upload
+            ? `${typedOwnResult.upload.toFixed(2)} Mbps`
+            : "N/A",
+          ping: typedOwnResult.ping?.avg
+            ? `${typedOwnResult.ping.avg.toFixed(2)} ms`
+            : "N/A",
+          jitter: typedOwnResult.jitter
+            ? `${typedOwnResult.jitter.toFixed(2)} ms`
+            : "N/A",
+        });
+      } else {
+        console.log("✗ Собственный алгоритм: тест не выполнен");
+      }
+
+      if (libreResult) {
+        console.log("✓ LibreSpeed:", {
+          download: `${libreResult.download.toFixed(2)} Mbps`,
+          upload: `${libreResult.upload.toFixed(2)} Mbps`,
+          ping: libreResult.ping?.avg
+            ? `${libreResult.ping.avg.toFixed(2)} ms`
+            : `${libreResult.ping} ms`,
+          jitter: `${libreResult.jitter || 0} ms`,
+          server: libreResult.server?.name || "Неизвестный сервер",
+        });
+      } else {
+        console.log("✗ LibreSpeed: тест не выполнен");
+      }
+
+      if (fastResult) {
+        console.log("✓ Fast.com:", `${fastResult.toFixed(2)} Mbps`);
+      } else {
+        console.log("✗ Fast.com: тест не выполнен");
+      }
 
       // Остальные данные будут обработаны в handleResultsCalculated
     } catch (error) {
-      console.error("Error running speed tests:", error);
+      console.error("❌ Ошибка выполнения тестов:", error);
     }
   }, [generateAndMeasureSpeed, runLibreSpeedTest, runFastSpeedTest, isTesting]);
 
@@ -238,21 +278,40 @@ const SpeedTestContent: React.FC = () => {
     }) => {
       // Проверяем, были ли результаты уже сохранены
       if (resultsSaved) {
-        console.log("Результаты уже были сохранены, пропускаем");
+        console.log("⏭️ Результаты уже были сохранены, пропускаем");
         return;
       }
 
-      console.log("Saving test results:", results);
+      console.log("💾 Сохранение результатов теста");
+      console.log("📋 Финальные результаты:", {
+        download: `${results.download.value.toFixed(2)} Mbps (${
+          results.download.source
+        })`,
+        upload: `${results.upload.value.toFixed(2)} Mbps (${
+          results.upload.source
+        })`,
+        ping: `${results.ping.value.toFixed(2)} ms (${results.ping.source})`,
+        jitter: `${results.jitter.value.toFixed(2)} ms (${
+          results.jitter.source
+        })`,
+      });
 
       try {
         // Получаем информацию о сервере
         const apiServer =
           process.env.NEXT_PUBLIC_API_SERVERS || "http://localhost:3001";
+        console.log("🔍 Получение информации о сервере...");
+
         const serverInfoResponse = await fetch(
           `${apiServer}/speedtest/server-info`
         );
         const serverInfoData = await serverInfoResponse.json();
         const serverInfo = serverInfoData.servers[0];
+
+        console.log("✓ Информация о сервере:", {
+          name: serverInfo.name,
+          location: `${serverInfo.location.city}, ${serverInfo.location.country}`,
+        });
 
         // Создаем данные для API, используя информацию о сервере и финальные результаты
         const bodyData = {
@@ -275,7 +334,7 @@ const SpeedTestContent: React.FC = () => {
           testType: "combined",
         };
 
-        console.log("Данные для сохранения:", bodyData);
+        console.log("📊 Данные для сохранения:", bodyData);
 
         const apiRequestBody = {
           method: "POST",
@@ -285,32 +344,28 @@ const SpeedTestContent: React.FC = () => {
           body: JSON.stringify(bodyData),
         };
 
-        console.log("Отправка результатов на сервер API напрямую...");
+        console.log("📤 Отправка результатов на сервер...");
 
         // Отправляем запрос к API для сохранения
         const response = await fetch("/api/speedtest-direct", apiRequestBody);
 
         // Читаем ответ один раз и сохраняем как JSON
         const responseData = await response.json();
-        console.log("Ответ от сервера:", responseData);
 
         if (!response.ok) {
-          console.error("Ошибка при сохранении результатов:", responseData);
-          console.error("Статус ответа:", response.status);
+          console.error("❌ Ошибка при сохранении результатов:", responseData);
+          console.error("↪️ Статус ответа:", response.status);
 
           // Если ошибка 401 - не авторизован, показываем сообщение и прекращаем попытки сохранения
           if (response.status === 401) {
             console.log(
-              "Пользователь не авторизован. Результаты не будут сохранены."
+              "🔒 Пользователь не авторизован. Результаты не будут сохранены."
             );
-            // Здесь можно добавить уведомление для пользователя через UI
-            // Например, использовать toast или alert из Mantine или другой библиотеки
-            // toast({ title: "Авторизация требуется", description: "Войдите в систему, чтобы сохранить результаты" });
             return;
           }
 
           // Если прямой API недоступен, используем старый API
-          console.log("Использование альтернативного метода сохранения...");
+          console.log("⚠️ Использование альтернативного метода сохранения...");
 
           // Подготавливаем данные для сохранения в старом формате
           const formData = new FormData();
@@ -375,14 +430,17 @@ const SpeedTestContent: React.FC = () => {
             );
           }
         } else {
-          console.log("Результаты успешно сохранены:", responseData);
+          console.log("✅ Результаты успешно сохранены:", {
+            id: responseData.id,
+            message: responseData.message,
+          });
         }
 
         // Отмечаем, что результаты были сохранены
         setResultsSaved(true);
       } catch (saveError) {
         console.error(
-          "Ошибка при автоматическом сохранении результатов:",
+          "❌ Ошибка при автоматическом сохранении результатов:",
           saveError
         );
       }
@@ -398,7 +456,19 @@ const SpeedTestContent: React.FC = () => {
       upload: { value: number; source: string };
       jitter: { value: number; source: string };
     }) => {
-      console.log("Received final results:", results);
+      console.log("📊 Итоговые результаты:", {
+        download: `${results.download.value.toFixed(2)} Mbps (${
+          results.download.source
+        })`,
+        upload: `${results.upload.value.toFixed(2)} Mbps (${
+          results.upload.source
+        })`,
+        ping: `${results.ping.value.toFixed(2)} ms (${results.ping.source})`,
+        jitter: `${results.jitter.value.toFixed(2)} ms (${
+          results.jitter.source
+        })`,
+      });
+
       setFinalResults({
         ping: results.ping,
         download: results.download,
@@ -587,6 +657,11 @@ const SpeedTestContent: React.FC = () => {
           </Group>
           <SpeedTestResult networkStats={fastSpeedStats} />
         </Card>
+      </Grid.Col>
+
+      {/* Добавляем компонент LibreSpeed Test */}
+      <Grid.Col span={12}>
+        <DirectLibreSpeedTest />
       </Grid.Col>
 
       {/* Отображаем компонент результатов всегда, даже в начале */}

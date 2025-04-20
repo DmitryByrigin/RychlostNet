@@ -151,8 +151,6 @@ export const useFastSpeedTest = () => {
             try {
                 // Читаем клон ответа как текст для отладки
                 const text = await clonedResponse.text();
-                console.log('Содержимое ответа:', text.substring(0, 500) + (text.length > 500 ? '...' : ''));
-                
                 if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
                     console.warn('Получен HTML вместо JSON - проблема с маршрутизацией API');
                 }
@@ -169,7 +167,7 @@ export const useFastSpeedTest = () => {
      */
     const runSpeedTest = async (): Promise<number | null> => {
         if (testInProgressRef.current) {
-            console.log('Fast.com test already in progress');
+            console.log('⏳ Тест Fast.com уже выполняется');
             return null;
         }
         
@@ -179,9 +177,8 @@ export const useFastSpeedTest = () => {
             setProgress(10);
             
             // Сначала получаем токен от нашего локального Next.js API
-            console.log('Getting Fast.com token from Next.js API...');
+            console.log('🔑 Получение токена Fast.com...');
             const tokenUrl = getCacheBustingUrl(FASTCOM_TOKEN_URL);
-            console.log('Запрос к:', tokenUrl);
             
             const tokenResponse = await fetch(tokenUrl, {
                 method: 'GET',
@@ -193,15 +190,6 @@ export const useFastSpeedTest = () => {
                     'Pragma': 'no-cache'
                 }
             });
-            
-            console.log('Статус ответа токена:', tokenResponse.status);
-            
-            // Получаем и логируем заголовки более безопасным способом
-            const headersObj: Record<string, string> = {};
-            tokenResponse.headers.forEach((value, key) => {
-                headersObj[key] = value;
-            });
-            console.log('Заголовки ответа токена:', headersObj);
             
             if (!tokenResponse.ok) {
                 throw new Error(`Failed to get Fast.com token: ${tokenResponse.status}`);
@@ -215,12 +203,11 @@ export const useFastSpeedTest = () => {
                 throw new Error('Token not found in response');
             }
             
-            console.log('Getting Fast.com test URLs from Next.js API...');
+            console.log('🔍 Получение серверов Fast.com для тестирования...');
             setProgress(20);
             
             // Теперь получаем URLs для тестирования через наш локальный Next.js API
             const urlsUrl = getCacheBustingUrl(`${FASTCOM_URLS_URL}?token=${token}&urlCount=5`);
-            console.log('Запрос к:', urlsUrl);
             
             const urlsResponse = await fetch(urlsUrl, {
                 method: 'GET',
@@ -233,8 +220,6 @@ export const useFastSpeedTest = () => {
                 }
             });
             
-            console.log('Статус ответа URLs:', urlsResponse.status);
-            
             if (!urlsResponse.ok) {
                 throw new Error(`Failed to get Fast.com test URLs: ${urlsResponse.status}`);
             }
@@ -246,7 +231,7 @@ export const useFastSpeedTest = () => {
                 throw new Error('No test URLs returned from Fast.com');
             }
             
-            console.log(`Received ${data.targets.length} test URLs from Fast.com via Next.js API`);
+            console.log(`✅ Получено ${data.targets.length} тестовых URL от Fast.com`);
             setProgress(30);
             
             // Фильтруем только HTTPS URLs для тестирования
@@ -262,18 +247,14 @@ export const useFastSpeedTest = () => {
                     .map((target: any) => ({ url: target.url }));
             }
             
-            console.log('Тестовые URL для скачивания:', testUrls);
-            
+            console.log(`🔄 Измерение пинга Fast.com...`);
             // Сначала измеряем пинг (из первого URL)
             if (testUrls.length > 0) {
-                console.log(`Testing ping using ${testUrls[0].url}...`);
                 const ping = await measurePing(testUrls[0].url, 8);
                 setPingStats(ping);
             }
             
-            console.log(`Starting download test with ${testUrls.length} URLs...`);
-            setProgress(40);
-            
+            console.log(`🔽 Запуск теста скорости загрузки на ${testUrls.length} серверах...`);
             // Замеряем время начала теста
             const startTime = performance.now();
             
@@ -328,7 +309,7 @@ export const useFastSpeedTest = () => {
             // Вычисляем скорость в Mbps (мегабиты в секунду)
             const downloadSpeedMbps = (totalBytes * 8) / (durationSeconds * 1000000);
             
-            console.log(`Fast.com download test completed: ${downloadSpeedMbps.toFixed(2)} Mbps`);
+            console.log(`✅ Тест скачивания Fast.com завершен: ${downloadSpeedMbps.toFixed(2)} Mbps`);
             
             // Сохраняем результат скачивания
             setDownloadSpeed(downloadSpeedMbps.toFixed(2));
@@ -338,20 +319,20 @@ export const useFastSpeedTest = () => {
             
             // Теперь измеряем скорость загрузки
             if (testUrls.length > 0) {
-                console.log(`Testing upload using ${testUrls[0].url}...`);
+                console.log(`🔼 Запуск теста скорости выгрузки...`);
                 try {
                     // Пробуем использовать первый URL для загрузки
                     const uploadSpeedMbps = await measureUpload(testUrls[0].url);
                     
                     // Если удалось измерить, сохраняем результат
                     if (uploadSpeedMbps > 0) {
-                        console.log(`Fast.com upload test completed: ${uploadSpeedMbps.toFixed(2)} Mbps`);
+                        console.log(`✅ Тест выгрузки Fast.com завершен: ${uploadSpeedMbps.toFixed(2)} Mbps`);
                         setUploadSpeed(uploadSpeedMbps.toFixed(2));
                     } else {
                         // Если не удалось измерить, устанавливаем приблизительный результат
                         // Обычно скорость загрузки составляет около 25-35% от скорости скачивания для домашних подключений
                         const estimatedUploadSpeed = downloadSpeedMbps * 0.3;
-                        console.log(`Failed to measure upload speed. Using estimate: ${estimatedUploadSpeed.toFixed(2)} Mbps`);
+                        console.log(`⚠️ Не удалось измерить скорость выгрузки. Оценка: ${estimatedUploadSpeed.toFixed(2)} Mbps`);
                         setUploadSpeed(estimatedUploadSpeed.toFixed(2));
                     }
                 } catch (error) {

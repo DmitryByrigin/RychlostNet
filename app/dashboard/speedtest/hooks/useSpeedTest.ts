@@ -39,9 +39,6 @@ export const useSpeedTest = () => {
                     try {
                         const cache = JSON.parse(cacheStr);
                         if (Date.now() - cache.timestamp < CACHE_DURATION) {
-                            console.log('Using cached server info in useSpeedTest');
-                            setServers(cache.data);
-                            
                             // Если сервер еще не выбран, выбираем первый из списка
                             if (!selectedServer && cache.data.length > 0) {
                                 setSelectedServer(cache.data[0]);
@@ -108,7 +105,7 @@ export const useSpeedTest = () => {
             // Определяем URL для тестирования пинга
             // Используем напрямую эндпоинт бэкенда для более точного измерения
             const pingEndpoint = `${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/ping`;
-            console.log('Измерение пинга к эндпоинту:', pingEndpoint);
+            console.log('🔄 Измерение пинга к эндпоинту:', pingEndpoint);
             
             // Увеличиваем количество замеров для более точной статистики
             const pingResults: number[] = [];
@@ -303,6 +300,14 @@ export const useSpeedTest = () => {
             
             // Отправляем результаты на сервер
             saveResults(result);
+            
+            // Оставляем только важные логи для тестирования
+            console.log('✅ Результаты тестирования собственного алгоритма:', {
+                download: `${result.download.toFixed(2)} Mbps`,
+                upload: `${result.upload.toFixed(2)} Mbps`,
+                ping: `${result.ping.avg.toFixed(2)} ms`,
+                jitter: `${result.jitter.toFixed(2)} ms`
+            });
             
         } catch (error) {
             console.error('Ошибка при запуске теста скорости:', error);
