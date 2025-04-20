@@ -71,6 +71,10 @@ export async function POST(req: NextRequest) {
         // Сохраняем результаты с привязкой к пользователю
         console.log('Сохраняем результаты в БД для пользователя:', userId);
         
+        // Логируем полученные значения для отладки
+        console.log('User location:', data.userLocation);
+        console.log('ISP:', data.isp);
+        
         const testRecord = await db.speedTestHistory.create({
             data: {
                 downloadSpeed: downloadSpeed,

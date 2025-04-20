@@ -165,6 +165,164 @@ export const useFastSpeedTest = () => {
     };
 
     /**
+     * Измеряет скорость загрузки данных на сервер с использованием улучшенного алгоритма
+     * @param baseUrl URL сервера
+     * @returns Скорость загрузки в Mbps
+     */
+    const measureUploadImproved = async (baseUrl: string): Promise<number> => {
+        try {
+            console.log('Начинаем улучшенное измерение Upload скорости...');
+            
+            // Размеры файлов для тестирования (в МБ)
+            const fileSizes = [1, 4, 8];
+            // Количество итераций для каждого размера
+            const iterations = 2;
+            // Максимальное время тестирования (в секундах)
+            const maxTestDuration = 15;
+            // Все измеренные скорости
+            const uploadSpeeds: number[] = [];
+            
+            // Функция для выполнения параллельных загрузок
+            const runParallelUploads = async (sizeMB: number, parallelCount: number): Promise<number[]> => {
+                const promises = [];
+                
+                for (let p = 0; p < parallelCount; p++) {
+                    // Каждый параллельный запрос получает слегка уменьшенный размер файла для стабильности
+                    const actualSize = sizeMB * 0.9;
+                    
+                    // Создаем блоб случайных данных
+                    const byteSize = Math.floor(actualSize * 1024 * 1024);
+                    const data = new Uint8Array(byteSize);
+                    
+                    // Заполняем случайными данными с учетом лимита crypto.getRandomValues()
+                    // Максимальный размер, который поддерживает crypto.getRandomValues() - 65536 байт
+                    const CHUNK_SIZE = 65536; // 64KB
+                    
+                    // Заполняем буфер по частям
+                    for (let offset = 0; offset < byteSize; offset += CHUNK_SIZE) {
+                        const length = Math.min(CHUNK_SIZE, byteSize - offset);
+                        const chunk = data.subarray(offset, offset + length);
+                        crypto.getRandomValues(chunk);
+                    }
+                    
+                    const blob = new Blob([data], { type: 'application/octet-stream' });
+                    
+                    // Формируем URL для тестирования
+                    let uploadUrl = baseUrl;
+                    if (!uploadUrl.endsWith('/')) uploadUrl += '/';
+                    uploadUrl += `?r=${Math.random()}&p=${p}`;
+                    
+                    console.log(`Параллельная загрузка #${p+1}: ${actualSize.toFixed(1)}MB на ${uploadUrl}`);
+                    
+                    // Устанавливаем таймаут для запроса
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => {
+                        controller.abort();
+                    }, maxTestDuration * 1000);
+                    
+                    const promise = (async () => {
+                        try {
+                            const start = performance.now();
+                            const response = await fetch(uploadUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Cache-Control': 'no-cache',
+                                    'Content-Type': 'application/octet-stream'
+                                },
+                                body: blob,
+                                signal: controller.signal
+                            });
+                            
+                            clearTimeout(timeoutId);
+                            
+                            if (response.ok) {
+                                const endTime = performance.now();
+                                
+                                // Вычисляем скорость в Mbps
+                                const uploadSize = byteSize;
+                                const duration = (endTime - start) / 1000; // Время в секундах
+                                
+                                if (duration > 0) {
+                                    const speedMbps = ((uploadSize * 8) / duration) / 1000000;
+                                    console.log(`Параллельная загрузка #${p+1}: ${speedMbps.toFixed(2)} Mbps, Время: ${duration.toFixed(2)} сек`);
+                                    return speedMbps;
+                                }
+                            } else {
+                                console.warn(`HTTP ошибка в параллельной загрузке #${p+1}: ${response.status}`);
+                            }
+                        } catch (error) {
+                            clearTimeout(timeoutId);
+                            console.warn(`Ошибка в параллельной загрузке #${p+1}:`, error);
+                        }
+                        return 0;
+                    })();
+                    
+                    promises.push(promise);
+                }
+                
+                return Promise.all(promises);
+            };
+            
+            // Тестируем с разными размерами и параллельными загрузками
+            for (const sizeMB of fileSizes) {
+                // Для каждого размера меняем количество параллельных запросов
+                // Для больших файлов используем меньше параллельных запросов
+                const parallelCount = sizeMB <= 2 ? 4 : (sizeMB <= 4 ? 3 : 2);
+                
+                for (let i = 0; i < iterations; i++) {
+                    try {
+                        console.log(`Upload тест ${sizeMB}MB с ${parallelCount} параллельными запросами, итерация ${i+1}`);
+                        
+                        const speeds = await runParallelUploads(sizeMB, parallelCount);
+                        const validSpeeds = speeds.filter(s => s > 0);
+                        
+                        if (validSpeeds.length > 0) {
+                            // Вычисляем общую скорость всех параллельных загрузок
+                            const totalSpeed = validSpeeds.reduce((sum, speed) => sum + speed, 0);
+                            uploadSpeeds.push(totalSpeed);
+                            
+                            console.log(`Итерация ${i+1}: Общая скорость ${totalSpeed.toFixed(2)} Mbps`);
+                            
+                            // Если скорость хорошая, прекращаем тестирование для этого размера
+                            if (totalSpeed > 30) { // 30 Mbps считается хорошей скоростью
+                                break;
+                            }
+                        }
+                    } catch (error) {
+                        console.warn(`Ошибка во время итерации теста загрузки ${sizeMB}MB:`, error);
+                    }
+                }
+                
+                // Если у нас уже есть хотя бы 3 измерения, можем остановиться
+                if (uploadSpeeds.length >= 3) {
+                    break;
+                }
+            }
+            
+            // Вычисляем среднюю скорость
+            if (uploadSpeeds.length > 0) {
+                // Сортируем скорости и исключаем минимальное и максимальное значения, если есть хотя бы 3 результата
+                if (uploadSpeeds.length >= 3) {
+                    uploadSpeeds.sort((a, b) => a - b);
+                    uploadSpeeds.shift(); // Удаляем минимальное значение
+                    uploadSpeeds.pop();   // Удаляем максимальное значение
+                }
+                
+                const avgSpeed = uploadSpeeds.reduce((sum, speed) => sum + speed, 0) / uploadSpeeds.length;
+                console.log(`Результат тестирования Upload: ${avgSpeed.toFixed(2)} Mbps из ${uploadSpeeds.length} измерений`);
+                return avgSpeed;
+            }
+            
+            // Если не удалось измерить, возвращаем 0
+            console.warn('Не удалось измерить скорость Upload');
+            return 0;
+        } catch (error) {
+            console.error('Ошибка при тестировании скорости Upload:', error);
+            return 0;
+        }
+    };
+
+    /**
      * Запускает тест скорости через Fast.com API через наш прокси-сервер
      */
     const runSpeedTest = async (): Promise<number | null> => {
@@ -338,26 +496,40 @@ export const useFastSpeedTest = () => {
             
             // Теперь измеряем скорость загрузки
             if (testUrls.length > 0) {
-                console.log(`Testing upload using ${testUrls[0].url}...`);
+                console.log(`Запускаем улучшенное тестирование Upload на ${testUrls[0].url}...`);
                 try {
-                    // Пробуем использовать первый URL для загрузки
-                    const uploadSpeedMbps = await measureUpload(testUrls[0].url);
+                    const uploadSpeedMbps = await measureUploadImproved(testUrls[0].url);
                     
                     // Если удалось измерить, сохраняем результат
                     if (uploadSpeedMbps > 0) {
-                        console.log(`Fast.com upload test completed: ${uploadSpeedMbps.toFixed(2)} Mbps`);
+                        console.log(`Тестирование Fast.com Upload завершено: ${uploadSpeedMbps.toFixed(2)} Mbps`);
                         setUploadSpeed(uploadSpeedMbps.toFixed(2));
                     } else {
-                        // Если не удалось измерить, устанавливаем приблизительный результат
-                        // Обычно скорость загрузки составляет около 25-35% от скорости скачивания для домашних подключений
-                        const estimatedUploadSpeed = downloadSpeedMbps * 0.3;
-                        console.log(`Failed to measure upload speed. Using estimate: ${estimatedUploadSpeed.toFixed(2)} Mbps`);
-                        setUploadSpeed(estimatedUploadSpeed.toFixed(2));
+                        // Если всё же не удалось измерить, используем несколько источников для оценки
+                        // 1. Пробуем стандартное измерение
+                        const standardUploadSpeed = await measureUpload(testUrls[0].url);
+                        
+                        if (standardUploadSpeed > 0) {
+                            console.log(`Стандартное измерение Upload: ${standardUploadSpeed.toFixed(2)} Mbps`);
+                            setUploadSpeed(standardUploadSpeed.toFixed(2));
+                        } else {
+                            // 2. Если и это не удалось, используем более сложную оценку
+                            // В среднем соотношение Upload/Download зависит от типа подключения:
+                            // - Оптоволокно: ~80% от Download
+                            // - Кабельное: ~20% от Download
+                            // - ADSL: ~10% от Download
+                            // - 4G/5G: ~30-40% от Download
+                            
+                            // Берем среднее значение
+                            const estimatedUploadSpeed = downloadSpeedMbps * 0.4;
+                            console.log(`Не удалось измерить Upload. Используем оценку: ${estimatedUploadSpeed.toFixed(2)} Mbps`);
+                            setUploadSpeed(estimatedUploadSpeed.toFixed(2));
+                        }
                     }
                 } catch (error) {
-                    console.error(`Error measuring upload speed:`, error);
+                    console.error(`Ошибка при измерении Upload скорости:`, error);
                     // Используем приблизительную оценку
-                    const estimatedUploadSpeed = downloadSpeedMbps * 0.3;
+                    const estimatedUploadSpeed = downloadSpeedMbps * 0.4;
                     setUploadSpeed(estimatedUploadSpeed.toFixed(2));
                 }
             }

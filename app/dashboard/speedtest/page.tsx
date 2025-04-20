@@ -9,6 +9,7 @@ import {
   Group,
   SimpleGrid,
   Text,
+  Badge,
 } from "@mantine/core";
 import {
   IconArrowsDiff,
@@ -17,6 +18,7 @@ import {
   IconUpload,
   IconServer,
   IconWifi2,
+  IconWaveSine,
 } from "@tabler/icons-react";
 import { useServer, ServerProvider } from "./contexts/ServerContext";
 import { useSpeedTest } from "./hooks/useSpeedTest";
@@ -30,6 +32,10 @@ import ServerService from "./components/ServerService";
 import ConnectionsService from "./components/ConnectionsService";
 import { Server } from "./types/geolocation";
 import { CorrectedResults } from "./components/CorrectedResults";
+import { useEnhancedPing, EnhancedPingResult } from "./hooks/useEnhancedPing";
+import EnhancedPingTest from "../../../components/speedtest/EnhancedPingTest";
+import { StatItem } from "./components/StatItem";
+import { EnhancedCorrectedResults } from "./components/EnhancedCorrectedResults";
 
 const SpeedTestContent: React.FC = () => {
   const { geolocationData, selectedServer } = useServer();
@@ -69,6 +75,12 @@ const SpeedTestContent: React.FC = () => {
     fastSpeedResult,
   } = useFastSpeedTest();
 
+  const {
+    pingResult: enhancedPingResult,
+    isRunning: isEnhancedPingRunning,
+    handlePingResult,
+  } = useEnhancedPing();
+
   const [loading, setLoading] = useState(true);
   const [selectedArrow, setSelectedArrow] = useState<"single" | "multi">(
     "multi"
@@ -93,6 +105,7 @@ const SpeedTestContent: React.FC = () => {
     ping: { value: number; source: string };
     download: { value: number; source: string };
     upload: { value: number; source: string };
+    jitter: { value: number; source: string };
   } | null>(null);
 
   // Флаг, указывающий, что результаты были уже сохранены
@@ -191,44 +204,7 @@ const SpeedTestContent: React.FC = () => {
     pingStats,
   ]);
 
-  // Комбинированный запуск всех трех тестов
-  const runAllTests = useCallback(async () => {
-    if (isTesting) return;
-
-    // Сбрасываем финальные результаты перед запуском нового теста
-    setFinalResults(null);
-    // Сбрасываем флаг сохранения
-    setResultsSaved(false);
-
-    console.log("Running all speed tests...");
-
-    try {
-      // Запускаем все тесты параллельно
-      const [ownTestPromise, libreSpeedPromise, fastPromise] = [
-        generateAndMeasureSpeed(),
-        runLibreSpeedTest(),
-        runFastSpeedTest(),
-      ];
-
-      // Ждем завершения всех тестов
-      const [ownResult, libreResult, fastResult] = await Promise.all([
-        ownTestPromise,
-        libreSpeedPromise,
-        fastPromise,
-      ]);
-
-      console.log("All tests completed:");
-      console.log("- Own algorithm:", ownResult);
-      console.log("- LibreSpeed:", libreResult);
-      console.log("- Fast.com:", fastResult);
-
-      // Остальные данные будут обработаны в handleResultsCalculated
-    } catch (error) {
-      console.error("Error running speed tests:", error);
-    }
-  }, [generateAndMeasureSpeed, runLibreSpeedTest, runFastSpeedTest, isTesting]);
-
-  // Функция для сохранения результатов теста
+  // 1. Переносим функцию saveTestResults выше
   const saveTestResults = useCallback(
     async (results: {
       ping: { value: number; source: string };
@@ -254,12 +230,27 @@ const SpeedTestContent: React.FC = () => {
         const serverInfoData = await serverInfoResponse.json();
         const serverInfo = serverInfoData.servers[0];
 
+        // Создаем объект для хранения деталей пинга, если доступны
+        const pingDetails = enhancedPingResult
+          ? enhancedPingResult.pingDetails
+          : undefined;
+
+        // Формируем пользовательскую локацию и ISP из геолокационных данных
+        const userLocation = geolocationData
+          ? [geolocationData.city, geolocationData.country]
+              .filter(Boolean)
+              .join(", ")
+          : "Unknown";
+
+        const userIsp = geolocationData?.org || "Unknown";
+
         // Создаем данные для API, используя информацию о сервере и финальные результаты
         const bodyData = {
           downloadSpeed: results.download.value,
           uploadSpeed: results.upload.value,
           ping: results.ping.value,
           jitter: results.jitter.value,
+          pingDetails: pingDetails, // Добавляем детали пинга
           serverName: serverInfo.name,
           serverLocation: `${serverInfo.location.city || ""}, ${
             serverInfo.location.region || ""
@@ -267,130 +258,56 @@ const SpeedTestContent: React.FC = () => {
             /^[, ]+|[, ]+$/g,
             ""
           ),
-          userLocation: `${geolocationData?.city || ""}, ${
-            geolocationData?.country || ""
-          }`,
-          isp: geolocationData?.org || serverInfo.location.org,
-          provider: "RychlostNet",
-          testType: "combined",
+          serverProvider: serverInfo.provider || "Unknown",
+          serverDistance: serverInfo.distance || 0,
+          testTime: new Date().toISOString(),
+          // Явно добавляем поля для базы данных
+          userLocation: userLocation,
+          isp: userIsp,
+          testSource: {
+            download: results.download.source,
+            upload: results.upload.source,
+            ping: enhancedPingResult
+              ? "Enhanced Ping Test"
+              : results.ping.source,
+            jitter: enhancedPingResult
+              ? "Enhanced Ping Test"
+              : results.jitter.source,
+          },
+          clientInfo: {
+            ip: geolocationData?.ip || "",
+            isp: userIsp,
+            location: userLocation,
+            userAgent: navigator.userAgent,
+          },
         };
 
-        console.log("Данные для сохранения:", bodyData);
-
-        const apiRequestBody = {
+        // Отправляем результаты на сервер
+        const saveResponse = await fetch(`/api/speedtest-direct`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(bodyData),
-        };
+        });
 
-        console.log("Отправка результатов на сервер API напрямую...");
-
-        // Отправляем запрос к API для сохранения
-        const response = await fetch("/api/speedtest-direct", apiRequestBody);
-
-        // Читаем ответ один раз и сохраняем как JSON
-        const responseData = await response.json();
-        console.log("Ответ от сервера:", responseData);
-
-        if (!response.ok) {
-          console.error("Ошибка при сохранении результатов:", responseData);
-          console.error("Статус ответа:", response.status);
-
-          // Если ошибка 401 - не авторизован, показываем сообщение и прекращаем попытки сохранения
-          if (response.status === 401) {
-            console.log(
-              "Пользователь не авторизован. Результаты не будут сохранены."
-            );
-            // Здесь можно добавить уведомление для пользователя через UI
-            // Например, использовать toast или alert из Mantine или другой библиотеки
-            // toast({ title: "Авторизация требуется", description: "Войдите в систему, чтобы сохранить результаты" });
-            return;
-          }
-
-          // Если прямой API недоступен, используем старый API
-          console.log("Использование альтернативного метода сохранения...");
-
-          // Подготавливаем данные для сохранения в старом формате
-          const formData = new FormData();
-          const dummyFile = new Blob([new ArrayBuffer(1024 * 1024)], {
-            type: "application/octet-stream",
-          });
-          formData.append("files", dummyFile, "noiseData_1024.bin");
-
-          // Собираем информацию о сервере в старом формате
-          const serverInfoFallback = {
-            name: "RychlostNet Combined",
-            location: {
-              city: libreSpeedResult?.server?.location?.city || "Unknown",
-              region: libreSpeedResult?.server?.location?.region || "Unknown",
-              country:
-                libreSpeedResult?.server?.location?.country ||
-                selectedServer?.location?.country ||
-                "Unknown",
-            },
-            userLocation: {
-              city: geolocationData?.city || "Unknown",
-              region: "Unknown",
-              country: geolocationData?.country || "Unknown",
-              ip: geolocationData?.ip || "",
-            },
-            isp: geolocationData?.org || "Unknown",
-          };
-
-          formData.append("serverInfo", JSON.stringify(serverInfoFallback));
-
-          // Добавляем данные теста для корректировки
-          const cliTestData = {
-            downloadSpeed: `${results.download.value.toFixed(2)} Mbps`,
-            uploadSpeed: `${results.upload.value.toFixed(2)} Mbps`,
-            ping: {
-              min: 0,
-              max: 0,
-              avg: results.ping.value,
-              jitter: results.jitter.value,
-            },
-          };
-          formData.append("cliTestData", JSON.stringify(cliTestData));
-
-          // Отправляем запрос к старому API
-          console.log("Отправка запроса к существующему API...");
-          const fallbackResponse = await fetch("/api/speedtest", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (fallbackResponse.ok) {
-            const fallbackResponseData = await fallbackResponse.json();
-            console.log(
-              "Результаты успешно сохранены через fallback API:",
-              fallbackResponseData
-            );
-          } else {
-            const fallbackErrorText = await fallbackResponse.text();
-            console.error(
-              "Не удалось сохранить результаты через fallback API:",
-              fallbackErrorText
-            );
-          }
+        if (saveResponse.ok) {
+          console.log("Результаты успешно сохранены");
+          setResultsSaved(true);
         } else {
-          console.log("Результаты успешно сохранены:", responseData);
+          console.error(
+            "Ошибка при сохранении результатов:",
+            saveResponse.statusText
+          );
         }
-
-        // Отмечаем, что результаты были сохранены
-        setResultsSaved(true);
-      } catch (saveError) {
-        console.error(
-          "Ошибка при автоматическом сохранении результатов:",
-          saveError
-        );
+      } catch (error) {
+        console.error("Ошибка при сохранении результатов:", error);
       }
     },
-    [geolocationData, libreSpeedResult, selectedServer, resultsSaved]
+    [geolocationData, resultsSaved, enhancedPingResult]
   );
 
-  // Обработчик для получения финальных результатов из компонента CorrectedResults
+  // 2. Затем определяем функцию handleResultsCalculated
   const handleResultsCalculated = useCallback(
     (results: {
       ping: { value: number; source: string };
@@ -398,18 +315,104 @@ const SpeedTestContent: React.FC = () => {
       upload: { value: number; source: string };
       jitter: { value: number; source: string };
     }) => {
-      console.log("Received final results:", results);
-      setFinalResults({
-        ping: results.ping,
-        download: results.download,
-        upload: results.upload,
-      });
+      console.log("Final results calculated:", results);
 
-      // Сразу сохраняем результаты без ожидания обновления состояния
-      saveTestResults(results);
+      // Всегда заменяем результаты пинга и джиттера на данные улучшенного теста, если они доступны
+      if (
+        enhancedPingResult &&
+        typeof enhancedPingResult.avg === "number" &&
+        typeof enhancedPingResult.jitter === "number"
+      ) {
+        const modifiedResults = {
+          // Оставляем исходные результаты для скорости загрузки и выгрузки
+          download: results.download,
+          upload: results.upload,
+          // Заменяем пинг и джиттер на результаты улучшенного теста
+          ping: {
+            value: enhancedPingResult.avg,
+            source: "Enhanced Ping Test",
+          },
+          jitter: {
+            value: enhancedPingResult.jitter,
+            source: "Enhanced Ping Test",
+          },
+        };
+
+        console.log("Using enhanced ping results:", modifiedResults);
+        setFinalResults(modifiedResults);
+      } else {
+        // Если улучшенный тест не доступен, используем исходные результаты
+        setFinalResults(results);
+      }
     },
-    [saveTestResults]
+    [enhancedPingResult]
   );
+
+  // 3. И только после этого идет функция runAllTests
+  const runAllTests = useCallback(async () => {
+    if (isTesting) return;
+
+    // Сбрасываем финальные результаты перед запуском нового теста
+    setFinalResults(null);
+    // Сбрасываем флаг сохранения
+    setResultsSaved(false);
+
+    console.log("Running all speed tests...");
+
+    try {
+      // Сначала запускаем тест улучшенного пинга и ждем небольшое время
+      // чтобы он успел начаться раньше других тестов
+      const pingButton = document.querySelector(
+        "[data-enhanced-ping-test-button]"
+      );
+      if (pingButton instanceof HTMLButtonElement) {
+        pingButton.click();
+        // Даем небольшую задержку для инициализации теста пинга перед другими тестами
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Запускаем все тесты параллельно
+      const [ownTestPromise, libreSpeedPromise, fastPromise] = [
+        generateAndMeasureSpeed(),
+        runLibreSpeedTest(),
+        runFastSpeedTest(),
+      ];
+
+      // Ждем завершения всех тестов
+      const [ownResult, libreResult, fastResult] = await Promise.all([
+        ownTestPromise,
+        libreSpeedPromise,
+        fastPromise,
+      ]);
+
+      console.log("All tests completed:");
+      console.log("- Own algorithm:", ownResult);
+      console.log("- LibreSpeed:", libreResult);
+      console.log("- Fast.com:", fastResult);
+
+      // Остальные данные будут обработаны в handleResultsCalculated
+    } catch (error) {
+      console.error("Error running speed tests:", error);
+    }
+  }, [
+    generateAndMeasureSpeed,
+    runLibreSpeedTest,
+    runFastSpeedTest,
+    isTesting,
+    setResultsSaved,
+  ]);
+
+  // Эффект для сохранения результатов после завершения всех тестов
+  useEffect(() => {
+    // Проверяем, что все тесты завершены и есть финальные результаты
+    if (!isTesting && finalResults && !resultsSaved) {
+      console.log(
+        "Все тесты завершены, сохраняем финальные результаты:",
+        finalResults
+      );
+      saveTestResults(finalResults);
+    }
+  }, [isTesting, finalResults, resultsSaved, saveTestResults]);
 
   const networkStats = [
     {
@@ -589,10 +592,16 @@ const SpeedTestContent: React.FC = () => {
         </Card>
       </Grid.Col>
 
-      {/* Отображаем компонент результатов всегда, даже в начале */}
+      {/* Скрытый компонент EnhancedPingTest */}
+      <div style={{ display: "none" }}>
+        <EnhancedPingTest onPingResult={handlePingResult} />
+      </div>
+
+      {/* Заменяем CorrectedResults на EnhancedCorrectedResults */}
       <Grid.Col span={12}>
-        <CorrectedResults
-          isTesting={isTesting}
+        <EnhancedCorrectedResults
+          isTesting={isTesting || isEnhancedPingRunning}
+          enhancedPingResult={enhancedPingResult}
           ownTestResult={
             downloadSpeed && uploadSpeed && pingStats.avg > 0
               ? {
