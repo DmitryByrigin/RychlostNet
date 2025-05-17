@@ -35,16 +35,16 @@ const fetchFromCacheOrNetwork = async <T,>(url: string, cacheKey: string): Promi
         try {
             const cache = JSON.parse(cacheStr);
             if (Date.now() - cache.timestamp < CACHE_DURATION) {
-                console.log(`Using cached data for ${cacheKey}`);
+                // console.log(`Using cached data for ${cacheKey}`);
                 return cache.data;
             }
         } catch (e) {
-            console.warn(`Failed to parse cache for ${cacheKey}:`, e);
+            // console.warn(`Failed to parse cache for ${cacheKey}:`, e);
         }
     }
     
     // Если нет кэша или кэш устарел, делаем запрос
-    console.log(`Fetching fresh data for ${cacheKey}...`);
+    // console.log(`Fetching fresh data for ${cacheKey}...`);
     const response = await fetch(url, {
         cache: 'no-store',
         headers: {
@@ -82,16 +82,16 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             
             // Используем кэш или делаем новый запрос
             const data = await fetchFromCacheOrNetwork<GeolocationData>('/api/getgeolocation', 'geolocation_cache');
-            console.log('Geolocation data:', data);
+            // console.log('Geolocation data:', data);
             
             // Initialize empty servers array if not present
             if (!data.servers) {
-                console.warn('No servers array in response, initializing empty array');
+                // console.warn('No servers array in response, initializing empty array');
                 data.servers = [];
             }
 
             const serversArray = Array.isArray(data.servers) ? data.servers : [data.servers];
-            console.log('Servers array:', serversArray);
+            // console.log('Servers array:', serversArray);
             
             // Если есть данные о местоположении клиента, используем их для расчета расстояния
             if (clientLocation) {
@@ -106,7 +106,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 const sortedServers = serversWithDistance.sort((a: Server & { distance: number }, b: Server & { distance: number }) => 
                     (a.distance || 0) - (b.distance || 0)
                 );
-                console.log('Sorted servers:', sortedServers);
+                // console.log('Sorted servers:', sortedServers);
 
                 setGeolocationData({
                     ...clientLocation,
@@ -114,7 +114,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 });
             }
         } catch (error) {
-            console.error('Error in geolocation API:', error);
+            // console.error('Error in geolocation API:', error);
             setGeolocationData(null);
         } finally {
             setIsLoading(false);
@@ -122,14 +122,14 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     useEffect(() => {
-        fetchGeolocationData().catch(console.error);
+        fetchGeolocationData().catch(/* console.error */);
     }, [clientLocation]);
 
     useEffect(() => {
         // Устанавливаем сервер по умолчанию, когда получаем данные о геолокации
         if (geolocationData && geolocationData.servers && geolocationData.servers.length > 0) {
             const defaultServer = geolocationData.servers[0];
-            console.log('Setting default server:', defaultServer);
+            // console.log('Setting default server:', defaultServer);
             setSelectedServer(defaultServer);
         }
     }, [geolocationData]);

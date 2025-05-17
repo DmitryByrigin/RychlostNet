@@ -82,7 +82,7 @@ export const useLibreSpeedTest = () => {
             }
             return false;
         } catch (err) {
-            console.log(`Ошибка при проверке сервера: ${server}`, err);
+            // console.log(`Ошибка при проверке сервера: ${server}`, err);
             return false;
         }
     };
@@ -102,7 +102,7 @@ export const useLibreSpeedTest = () => {
                     try {
                         const cache = JSON.parse(cacheStr);
                         if (Date.now() - cache.timestamp < CACHE_DURATION) {
-                            console.log('Using cached LibreSpeed server info');
+                            // console.log('Using cached LibreSpeed server info');
                             setServers(cache.data);
                             
                             // Автоматический выбор лучшего сервера
@@ -116,12 +116,12 @@ export const useLibreSpeedTest = () => {
                             return;
                         }
                     } catch (e) {
-                        console.warn('Failed to parse server cache:', e);
+                        // console.warn('Failed to parse server cache:', e);
                     }
                 }
                 
                 // Получаем список серверов через наш прокси
-                console.log('Получаем список серверов через прокси...');
+                // console.log('Получаем список серверов через прокси...');
                 
                 try {
                     const response = await fetch(`${LIBRESPEED_ENDPOINT}/servers`);
@@ -129,7 +129,7 @@ export const useLibreSpeedTest = () => {
                         const data = await response.json();
                         
                         if (data && Array.isArray(data) && data.length > 0) {
-                            console.log(`Получено ${data.length} серверов через прокси`);
+                            // console.log(`Получено ${data.length} серверов через прокси`);
                             
                             // Используем серверы, полученные через прокси
                             setServers(data);
@@ -144,12 +144,12 @@ export const useLibreSpeedTest = () => {
                             if (slovakServers.length > 0) {
                                 const bestServer = findBestServer(slovakServers, 'Slovakia');
                                 setSelectedServer(bestServer);
-                                console.log(`🌍 Выбран сервер: ${bestServer.name}`);
+                                // console.log(`🌍 Выбран сервер: ${bestServer.name}`);
                             } else {
                                 // Иначе используем ближайший европейский сервер
                                 const bestServer = findBestServer(data, geolocationData?.country);
                                 setSelectedServer(bestServer);
-                                console.log(`🌍 Выбран сервер: ${bestServer.name}`);
+                                // console.log(`🌍 Выбран сервер: ${bestServer.name}`);
                             }
                             
                             // Кэшируем результат
@@ -164,11 +164,11 @@ export const useLibreSpeedTest = () => {
                         }
                     }
                 } catch (error) {
-                    console.error('Ошибка при получении серверов через прокси:', error);
+                    // console.error('Ошибка при получении серверов через прокси:', error);
                 }
                 
                 // Если API не сработал, используем проверенный список публичных серверов
-                console.log('Using static list of verified LibreSpeed servers');
+                // console.log('Using static list of verified LibreSpeed servers');
                 
                 // Список проверенных серверов (используем HTTP чтобы избежать проблем с сертификатами)
                 const staticLibreSpeedServers: LibreSpeedServer[] = [
@@ -277,20 +277,20 @@ export const useLibreSpeedTest = () => {
                 
                 // Теперь проверим доступность серверов и выберем лучший
                 try {
-                    console.log('🔍 Проверка доступности серверов...');
+                    // console.log('🔍 Проверка доступности серверов...');
                     const availableServers: LibreSpeedServer[] = [];
                     
                     // Проверяем все сервера 
                     for (const server of staticLibreSpeedServers) {
                         const isAvailable = await checkServerAvailability(server.server);
                         if (isAvailable) {
-                            console.log(`✅ Сервер ${server.name} доступен`);
+                            // console.log(`✅ Сервер ${server.name} доступен`);
                             availableServers.push(server);
                         }
                     }
                     
                     if (availableServers.length > 0) {
-                        console.log(`🔢 Найдено ${availableServers.length} доступных серверов`);
+                        // console.log(`🔢 Найдено ${availableServers.length} доступных серверов`);
                         // Обновляем список серверов только доступными серверами
                         setServers(availableServers);
                         
@@ -298,17 +298,17 @@ export const useLibreSpeedTest = () => {
                         if (!selectedServer) {
                             const bestServer = findBestServer(availableServers, geolocationData?.country);
                             setSelectedServer(bestServer);
-                            console.log(`🌍 Выбран сервер: ${bestServer.name}`);
+                            // console.log(`🌍 Выбран сервер: ${bestServer.name}`);
                         }
                     } else {
-                        console.log('Нет доступных серверов, используем исходный список');
+                        // console.log('Нет доступных серверов, используем исходный список');
                         if (!selectedServer && staticLibreSpeedServers.length > 0) {
                             const bestServer = findBestServer(staticLibreSpeedServers, geolocationData?.country);
                             setSelectedServer(bestServer);
                         }
                     }
                 } catch (error) {
-                    console.error('Ошибка при проверке серверов:', error);
+                    // console.error('Ошибка при проверке серверов:', error);
                     // Если произошла ошибка, просто выбираем из статического списка
                     if (!selectedServer && staticLibreSpeedServers.length > 0) {
                         const bestServer = findBestServer(staticLibreSpeedServers, geolocationData?.country);
@@ -319,7 +319,7 @@ export const useLibreSpeedTest = () => {
                 // Завершаем проверку серверов
                 setCheckingServers(false);
             } catch (error) {
-                console.error('Ошибка при загрузке списка серверов LibreSpeed:', error);
+                // console.error('Ошибка при загрузке списка серверов LibreSpeed:', error);
                 
                 // Если произошла ошибка, но у нас есть выбранный сервер, используем его
                 if (!selectedServer && servers.length > 0) {
@@ -335,11 +335,11 @@ export const useLibreSpeedTest = () => {
     const runLibreSpeedTest = useCallback(async () => {
         // Если нет выбранного сервера, не запускаем тест
         if (!selectedServer) {
-            console.error('LibreSpeed test cancelled - no server selected');
+            // console.error('LibreSpeed test cancelled - no server selected');
             return null;
         }
 
-        console.log(`🚀 Запуск теста LibreSpeed на сервере: ${selectedServer.name}`);
+        // console.log(`🚀 Запуск теста LibreSpeed на сервере: ${selectedServer.name}`);
         
         try {
             setIsRunning(true);
@@ -358,13 +358,13 @@ export const useLibreSpeedTest = () => {
             
             if (response.ok) {
                 const responseData = await response.json();
-                console.log('✅ Тест LibreSpeed завершен:', {
-                    download: `${responseData.result.download.toFixed(2)} Mbps`,
-                    upload: `${responseData.result.upload.toFixed(2)} Mbps`,
-                    ping: `${responseData.result.ping.toFixed(2)} ms`,
-                    jitter: `${responseData.result.jitter ? responseData.result.jitter.toFixed(2) : 0} ms`,
-                    server: responseData.result.server || selectedServer.name
-                });
+                // console.log('✅ Тест LibreSpeed завершен:', {
+                //     download: `${responseData.result.download.toFixed(2)} Mbps`,
+                //     upload: `${responseData.result.upload.toFixed(2)} Mbps`,
+                //     ping: `${responseData.result.ping.toFixed(2)} ms`,
+                //     jitter: `${responseData.result.jitter ? responseData.result.jitter.toFixed(2) : 0} ms`,
+                //     server: responseData.result.server || selectedServer.name
+                // });
                 
                 // Извлекаем результат, учитывая структуру ответа
                 const result = responseData.success && responseData.result ? responseData.result : responseData;
@@ -402,11 +402,11 @@ export const useLibreSpeedTest = () => {
                 
                 return speedTestResult;
             } else {
-                console.error('LibreSpeed test failed:', await response.text());
+                // console.error('LibreSpeed test failed:', await response.text());
                 return null;
             }
         } catch (error) {
-            console.error('Error during LibreSpeed test:', error);
+            // console.error('Error during LibreSpeed test:', error);
             return null;
         } finally {
             setIsRunning(false);
@@ -447,7 +447,7 @@ export const useLibreSpeedTest = () => {
             
             return testResult;
         } catch (error) {
-            console.error('Error during speed test:', error);
+            // console.error('Error during speed test:', error);
             return null;
         } finally {
             testInProgressRef.current = false;

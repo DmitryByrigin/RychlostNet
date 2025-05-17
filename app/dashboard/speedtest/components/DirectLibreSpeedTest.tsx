@@ -434,9 +434,9 @@ export const DirectLibreSpeedTest = () => {
     )}&server=${encodeURIComponent(serverObj.server)}&t=${cacheBuster}`;
 
     // Логируем созданные URL для отладки
-    console.log(`🌐 URL для загрузки: ${downloadUrl}`);
-    console.log(`🌐 URL для выгрузки: ${uploadUrl}`);
-    console.log(`🌐 URL для пинга: ${pingUrl}`);
+    // console.log(`🌐 URL для загрузки: ${downloadUrl}`);
+    // console.log(`🌐 URL для выгрузки: ${uploadUrl}`);
+    // console.log(`🌐 URL для пинга: ${pingUrl}`);
 
     // Если уже есть инстанс тестирования, удаляем его для создания нового
     if (speedtestRef.current) {

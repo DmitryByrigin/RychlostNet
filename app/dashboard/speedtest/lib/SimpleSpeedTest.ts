@@ -227,7 +227,7 @@ export class SimpleSpeedTest {
     // Запускаем тесты в порядке, указанном в настройках
     const testOrder = this.settings.test_order || "P_D_U";
     
-    console.log(`🚀 Запуск SimpleSpeedTest, порядок тестов: ${testOrder}`);
+    // console.log(`🚀 Запуск SimpleSpeedTest, порядок тестов: ${testOrder}`);
     
     // Запуск первого теста
     if (testOrder.indexOf("P") !== -1) {
@@ -249,7 +249,7 @@ export class SimpleSpeedTest {
       return;
     }
     
-    console.log("⚠️ Тест прерван пользователем");
+    // console.log("⚠️ Тест прерван пользователем");
     this.abortRequests();
     this.clearAllTimers();
     this.state = TestState.ABORTED;
@@ -264,12 +264,12 @@ export class SimpleSpeedTest {
   private endTest(aborted: boolean): void {
     if (this.state === TestState.FINISHED || this.state === TestState.ABORTED) return;
     
-    console.log("✅ Тест завершен");
-    console.log(`📊 Итоговые результаты: 
-      - Пинг: ${this.results.ping.toFixed(2)} мс
-      - Джиттер: ${this.results.jitter.toFixed(2)} мс
-      - Загрузка: ${this.results.download.toFixed(2)} Мбит/с
-      - Выгрузка: ${this.results.upload.toFixed(2)} Мбит/с`);
+    // console.log("✅ Тест завершен");
+    // console.log(`📊 Итоговые результаты: 
+    //   - Пинг: ${this.results.ping.toFixed(2)} мс
+    //   - Джиттер: ${this.results.jitter.toFixed(2)} мс
+    //   - Загрузка: ${this.results.download.toFixed(2)} Мбит/с
+    //   - Выгрузка: ${this.results.upload.toFixed(2)} Мбит/с`);
     
     this.abortRequests();
     this.clearAllTimers();
@@ -327,7 +327,7 @@ export class SimpleSpeedTest {
     this.pingRuns = 0;
     this.pingProgress = 0;
     
-    console.log("🏓 Запуск теста пинга");
+    // console.log("🏓 Запуск теста пинга");
     
     // Запускаем мониторинг прогресса
     this.interval = setInterval(() => {
@@ -408,7 +408,7 @@ export class SimpleSpeedTest {
       if (this.pingRuns >= this.settings.count_ping!) {
         this.pingProgress = 1;
         
-        console.log(`🏓 Тест пинга завершен: ${this.pingStatus}ms, джиттер: ${this.jitterStatus}ms`);
+        // console.log(`🏓 Тест пинга завершен: ${this.pingStatus}ms, джиттер: ${this.jitterStatus}ms`);
         
         // Отмечаем тест пинга как выполненный
         this.completedTests.P = true;
@@ -426,7 +426,7 @@ export class SimpleSpeedTest {
     xhr.onerror = () => {
       if (!this.isRunning) return;
       
-      console.error("❌ Ошибка при тесте пинга");
+      // console.error("❌ Ошибка при тесте пинга");
       
       // Прерываем текущий запрос
       xhr.abort();
@@ -443,7 +443,7 @@ export class SimpleSpeedTest {
     // Добавляем таймаут для запроса пинга
     xhr.timeout = 5000; // 5 секунд максимум
     xhr.ontimeout = () => {
-      console.warn("⚠️ Таймаут запроса пинга");
+      // console.warn("⚠️ Таймаут запроса пинга");
       xhr.abort();
       this.xhrRequest = this.xhrRequest.filter(x => x !== xhr);
       
@@ -462,7 +462,7 @@ export class SimpleSpeedTest {
    */
   private goToNextTest(currentTest: string): void {
     const testOrder = this.settings.test_order || "P_D_U";
-    console.log(`🔄 Выбор следующего теста после ${currentTest}. Порядок: ${testOrder}, выполнены: P=${this.completedTests.P}, D=${this.completedTests.D}, U=${this.completedTests.U}`);
+    // console.log(`🔄 Выбор следующего теста после ${currentTest}. Порядок: ${testOrder}, выполнены: P=${this.completedTests.P}, D=${this.completedTests.D}, U=${this.completedTests.U}`);
     
     // Проверяем, все ли тесты выполнены
     if (
@@ -472,18 +472,18 @@ export class SimpleSpeedTest {
     ) {
       // Если есть невыполненные тесты, выбираем следующий
       if (testOrder.includes("D") && !this.completedTests.D) {
-        console.log("📊 Запуск теста загрузки (D) как следующего в очереди");
+        // console.log("�� Запуск теста загрузки (D) как следующего в очереди");
         this.startDownloadTest();
       } else if (testOrder.includes("U") && !this.completedTests.U) {
-        console.log("📊 Запуск теста выгрузки (U) как следующего в очереди");
+        // console.log("📊 Запуск теста выгрузки (U) как следующего в очереди");
         this.startUploadTest();
       } else if (testOrder.includes("P") && !this.completedTests.P) {
-        console.log("📊 Запуск теста пинга (P) как следующего в очереди");
+        // console.log("📊 Запуск теста пинга (P) как следующего в очереди");
         this.startPingTest();
       }
     } else {
       // Все тесты выполнены, завершаем
-      console.log("✅ Все тесты в последовательности выполнены");
+      // console.log("✅ Все тесты в последовательности выполнены");
       this.endTest(false);
     }
   }
@@ -494,7 +494,7 @@ export class SimpleSpeedTest {
   private startDownloadTest(): void {
     // Если тест загрузки уже выполнен, переходим к следующему тесту
     if (this.completedTests.D) {
-      console.log("⚠️ Тест загрузки уже выполнен, пропускаем");
+      // console.log("⚠️ Тест загрузки уже выполнен, пропускаем");
       this.goToNextTest("D");
       return;
     }
@@ -513,8 +513,8 @@ export class SimpleSpeedTest {
     this.lastDlSpeed = 0;
     this.lastDlSpeedChangeTime = 0;
     
-    console.log("⬇️ Запуск теста загрузки");
-    console.log(`🔍 URL для загрузки: ${this.settings.url_dl}`);
+    // console.log("⬇️ Запуск теста загрузки");
+    // console.log(`🔍 URL для загрузки: ${this.settings.url_dl}`);
     
     // Запускаем мониторинг прогресса
     if (!this.interval) {
@@ -683,7 +683,7 @@ export class SimpleSpeedTest {
       // Добавляем таймаут для запроса
       xhr.timeout = 10000; // 10 секунд максимум
       xhr.ontimeout = () => {
-        console.warn("⚠️ Таймаут запроса загрузки");
+        // console.warn("⚠️ Таймаут запроса загрузки");
         xhr.abort();
         this.xhrRequest = this.xhrRequest.filter(x => x !== xhr);
         
@@ -700,7 +700,7 @@ export class SimpleSpeedTest {
       // Отправляем запрос
       xhr.send();
     } catch (e) {
-      console.error("❌ Ошибка при создании запроса загрузки:", e);
+      // console.error("❌ Ошибка при создании запроса загрузки:", e);
       this.pendingRequests--;
       
       if (this.pendingRequests === 0) {
@@ -725,7 +725,7 @@ export class SimpleSpeedTest {
     // Устанавливаем прогресс загрузки в 100%
     this.dlProgress = 1;
     
-    console.log(`⬇️ Тест загрузки завершен: ${this.dlStatus} Мбит/с`);
+    // console.log(`⬇️ Тест загрузки завершен: ${this.dlStatus} Мбит/с`);
     
     // Отмечаем тест загрузки как выполненный
     this.completedTests.D = true;
@@ -740,7 +740,7 @@ export class SimpleSpeedTest {
   private startUploadTest(): void {
     // Если тест выгрузки уже выполнен, переходим к следующему тесту
     if (this.completedTests.U) {
-      console.log("⚠️ Тест выгрузки уже выполнен, пропускаем");
+      // console.log("⚠️ Тест выгрузки уже выполнен, пропускаем");
       this.goToNextTest("U");
       return;
     }
@@ -760,8 +760,8 @@ export class SimpleSpeedTest {
     this.lastUlSpeed = 0;
     this.lastUlSpeedChangeTime = 0;
     
-    console.log("⬆️ Запуск теста выгрузки");
-    console.log(`🔍 URL для выгрузки: ${this.settings.url_ul}`);
+    // console.log("⬆️ Запуск теста выгрузки");
+    // console.log(`🔍 URL для выгрузки: ${this.settings.url_ul}`);
     
     // Запускаем мониторинг прогресса
     if (!this.interval) {
@@ -808,7 +808,7 @@ export class SimpleSpeedTest {
     // Устанавливаем прогресс выгрузки в 100%
     this.ulProgress = 1;
     
-    console.log(`⬆️ Тест выгрузки завершен: ${this.ulStatus} Мбит/с`);
+    // console.log(`⬆️ Тест выгрузки завершен: ${this.ulStatus} Мбит/с`);
     
     // Отмечаем тест выгрузки как выполненный
     this.completedTests.U = true;
@@ -826,7 +826,7 @@ export class SimpleSpeedTest {
     // Проверка количества запросов
     this.uploadCount++;
     if (this.uploadCount >= this.maxUploadRequests) {
-      console.log(`⚠️ Достигнуто максимальное количество запросов выгрузки: ${this.maxUploadRequests}`);
+      // console.log(`⚠️ Достигнуто максимальное количество запросов выгрузки: ${this.maxUploadRequests}`);
       this.pendingRequests--;
       return;
     }
@@ -861,7 +861,7 @@ export class SimpleSpeedTest {
       // Создаем blob для отправки
       blobData = new Blob([data], { type: 'application/octet-stream' });
     } catch (e) {
-      console.error("❌ Ошибка при создании данных для выгрузки:", e);
+      // console.error("❌ Ошибка при создании данных для выгрузки:", e);
       
       // Создаем строку вместо blob как запасной вариант
       let str = "";
@@ -986,7 +986,7 @@ export class SimpleSpeedTest {
       // Добавляем таймаут для запроса
       xhr.timeout = 12000; // 12 секунд максимум - upload обычно требует больше времени
       xhr.ontimeout = () => {
-        console.warn("⚠️ Таймаут запроса выгрузки");
+        // console.warn("⚠️ Таймаут запроса выгрузки");
         xhr.abort();
         this.xhrRequest = this.xhrRequest.filter(x => x !== xhr);
         
@@ -1003,7 +1003,7 @@ export class SimpleSpeedTest {
       // Отправляем запрос
       xhr.send(blobData);
     } catch (e) {
-      console.error("❌ Ошибка при создании запроса выгрузки:", e);
+      // console.error("❌ Ошибка при создании запроса выгрузки:", e);
       this.pendingRequests--;
       
       if (this.pendingRequests === 0) {

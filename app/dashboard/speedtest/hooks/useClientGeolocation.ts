@@ -30,7 +30,7 @@ export const useClientGeolocation = () => {
                 {
                     headers: {
                         'Accept-Language': 'sk',
-                        'User-Agent': 'RychlostNet Speed Test'
+                        'User-Agent': 'OdmerajSi Speed Test'
                     }
                 }
             );

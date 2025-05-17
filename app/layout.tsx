@@ -6,10 +6,9 @@ import {SessionProvider} from 'next-auth/react'
 import {auth} from '@/auth'
 import '@/styles/global.css';
 
-
 export const metadata = {
-    title: "RýchlosťNet - meranie rýchlosti pripojenia",
-    description: "Webová aplikácia na meranie rýchlosti internetu",
+    title: "OdmerajSi - Internet Speed Test",
+    description: "Web application for measuring internet speed",
 };
 
 export default async function RootLayout({children}: { children: any }) {

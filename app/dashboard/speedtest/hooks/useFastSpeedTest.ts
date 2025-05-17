@@ -56,7 +56,7 @@ export const useFastSpeedTest = () => {
                     pingTimes.push(pingTime);
                 }
             } catch (error) {
-                console.warn(`Error measuring ping to ${url}:`, error);
+                // console.warn(`Error measuring ping to ${url}:`, error);
             }
             
             // Небольшая пауза между замерами
@@ -130,7 +130,7 @@ export const useFastSpeedTest = () => {
             
             return speedMbps;
         } catch (error) {
-            console.error(`Error measuring upload speed to ${url}:`, error);
+            // console.error(`Error measuring upload speed to ${url}:`, error);
             return 0;
         }
     };
@@ -146,16 +146,16 @@ export const useFastSpeedTest = () => {
             // Пытаемся прочитать как JSON
             return await response.json();
         } catch (error) {
-            console.error('Ошибка при парсинге JSON:', error);
+            // console.error('Ошибка при парсинге JSON:', error);
             
             try {
                 // Читаем клон ответа как текст для отладки
                 const text = await clonedResponse.text();
                 if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
-                    console.warn('Получен HTML вместо JSON - проблема с маршрутизацией API');
+                    // console.warn('Получен HTML вместо JSON - проблема с маршрутизацией API');
                 }
             } catch (textError) {
-                console.error('Не удалось прочитать содержимое ответа:', textError);
+                // console.error('Не удалось прочитать содержимое ответа:', textError);
             }
             
             throw new Error('Не удалось распарсить ответ API как JSON');
@@ -169,7 +169,7 @@ export const useFastSpeedTest = () => {
      */
     const measureUploadImproved = async (baseUrl: string): Promise<number> => {
         try {
-            console.log('Начинаем улучшенное измерение Upload скорости...');
+            // console.log('Начинаем улучшенное измерение Upload скорости...');
             
             // Размеры файлов для тестирования (в МБ)
             const fileSizes = [1, 4, 8];
@@ -210,7 +210,7 @@ export const useFastSpeedTest = () => {
                     if (!uploadUrl.endsWith('/')) uploadUrl += '/';
                     uploadUrl += `?r=${Math.random()}&p=${p}`;
                     
-                    console.log(`Параллельная загрузка #${p+1}: ${actualSize.toFixed(1)}MB на ${uploadUrl}`);
+                    // console.log(`Параллельная загрузка #${p+1}: ${actualSize.toFixed(1)}MB на ${uploadUrl}`);
                     
                     // Устанавливаем таймаут для запроса
                     const controller = new AbortController();
@@ -242,15 +242,15 @@ export const useFastSpeedTest = () => {
                                 
                                 if (duration > 0) {
                                     const speedMbps = ((uploadSize * 8) / duration) / 1000000;
-                                    console.log(`Параллельная загрузка #${p+1}: ${speedMbps.toFixed(2)} Mbps, Время: ${duration.toFixed(2)} сек`);
+                                    // console.log(`Параллельная загрузка #${p+1}: ${speedMbps.toFixed(2)} Mbps, Время: ${duration.toFixed(2)} сек`);
                                     return speedMbps;
                                 }
                             } else {
-                                console.warn(`HTTP ошибка в параллельной загрузке #${p+1}: ${response.status}`);
+                                // console.warn(`HTTP ошибка в параллельной загрузке #${p+1}: ${response.status}`);
                             }
                         } catch (error) {
                             clearTimeout(timeoutId);
-                            console.warn(`Ошибка в параллельной загрузке #${p+1}:`, error);
+                            // console.warn(`Ошибка в параллельной загрузке #${p+1}:`, error);
                         }
                         return 0;
                     })();
@@ -269,7 +269,7 @@ export const useFastSpeedTest = () => {
                 
                 for (let i = 0; i < iterations; i++) {
                     try {
-                        console.log(`Upload тест ${sizeMB}MB с ${parallelCount} параллельными запросами, итерация ${i+1}`);
+                        // console.log(`Upload тест ${sizeMB}MB с ${parallelCount} параллельными запросами, итерация ${i+1}`);
                         
                         const speeds = await runParallelUploads(sizeMB, parallelCount);
                         const validSpeeds = speeds.filter(s => s > 0);
@@ -279,7 +279,7 @@ export const useFastSpeedTest = () => {
                             const totalSpeed = validSpeeds.reduce((sum, speed) => sum + speed, 0);
                             uploadSpeeds.push(totalSpeed);
                             
-                            console.log(`Итерация ${i+1}: Общая скорость ${totalSpeed.toFixed(2)} Mbps`);
+                            // console.log(`Итерация ${i+1}: Общая скорость ${totalSpeed.toFixed(2)} Mbps`);
                             
                             // Если скорость хорошая, прекращаем тестирование для этого размера
                             if (totalSpeed > 30) { // 30 Mbps считается хорошей скоростью
@@ -287,7 +287,7 @@ export const useFastSpeedTest = () => {
                             }
                         }
                     } catch (error) {
-                        console.warn(`Ошибка во время итерации теста загрузки ${sizeMB}MB:`, error);
+                        // console.warn(`Ошибка во время итерации теста загрузки ${sizeMB}MB:`, error);
                     }
                 }
                 
@@ -307,15 +307,15 @@ export const useFastSpeedTest = () => {
                 }
                 
                 const avgSpeed = uploadSpeeds.reduce((sum, speed) => sum + speed, 0) / uploadSpeeds.length;
-                console.log(`Результат тестирования Upload: ${avgSpeed.toFixed(2)} Mbps из ${uploadSpeeds.length} измерений`);
+                // console.log(`Результат тестирования Upload: ${avgSpeed.toFixed(2)} Mbps из ${uploadSpeeds.length} измерений`);
                 return avgSpeed;
             }
             
             // Если не удалось измерить, возвращаем 0
-            console.warn('Не удалось измерить скорость Upload');
+            // console.warn('Не удалось измерить скорость Upload');
             return 0;
         } catch (error) {
-            console.error('Ошибка при тестировании скорости Upload:', error);
+            // console.error('Ошибка при тестировании скорости Upload:', error);
             return 0;
         }
     };
@@ -325,7 +325,7 @@ export const useFastSpeedTest = () => {
      */
     const runSpeedTest = async (): Promise<number | null> => {
         if (testInProgressRef.current) {
-            console.log('⏳ Тест Fast.com уже выполняется');
+            // console.log('⏳ Тест Fast.com уже выполняется');
             return null;
         }
         
@@ -335,7 +335,7 @@ export const useFastSpeedTest = () => {
             setProgress(10);
             
             // Сначала получаем токен от нашего локального Next.js API
-            console.log('🔑 Получение токена Fast.com...');
+            // console.log('🔑 Получение токена Fast.com...');
             const tokenUrl = getCacheBustingUrl(FASTCOM_TOKEN_URL);
             
             const tokenResponse = await fetch(tokenUrl, {
@@ -361,7 +361,7 @@ export const useFastSpeedTest = () => {
                 throw new Error('Token not found in response');
             }
             
-            console.log('🔍 Получение серверов Fast.com для тестирования...');
+            // console.log('🔍 Получение серверов Fast.com для тестирования...');
             setProgress(20);
             
             // Теперь получаем URLs для тестирования через наш локальный Next.js API
@@ -389,7 +389,7 @@ export const useFastSpeedTest = () => {
                 throw new Error('No test URLs returned from Fast.com');
             }
             
-            console.log(`✅ Получено ${data.targets.length} тестовых URL от Fast.com`);
+            // console.log(`✅ Получено ${data.targets.length} тестовых URL от Fast.com`);
             setProgress(30);
             
             // Фильтруем только HTTPS URLs для тестирования
@@ -399,20 +399,20 @@ export const useFastSpeedTest = () => {
             
             // Если нет HTTPS URLs, используем все URL
             if (testUrls.length === 0) {
-                console.warn('No HTTPS URLs found, using all URLs');
+                // console.warn('No HTTPS URLs found, using all URLs');
                 testUrls = data.targets
                     .filter((target: any) => target.url)
                     .map((target: any) => ({ url: target.url }));
             }
             
-            console.log(`🔄 Измерение пинга Fast.com...`);
+            // console.log(`🔄 Измерение пинга Fast.com...`);
             // Сначала измеряем пинг (из первого URL)
             if (testUrls.length > 0) {
                 const ping = await measurePing(testUrls[0].url, 8);
                 setPingStats(ping);
             }
             
-            console.log(`🔽 Запуск теста скорости загрузки на ${testUrls.length} серверах...`);
+            // console.log(`🔽 Запуск теста скорости загрузки на ${testUrls.length} серверах...`);
             // Замеряем время начала теста
             const startTime = performance.now();
             
@@ -421,14 +421,14 @@ export const useFastSpeedTest = () => {
                 try {
                     const res = await fetch(target.url, { method: 'GET' });
                     if (!res.ok) {
-                        console.warn(`Failed to download from ${target.url}: ${res.status}`);
+                        // console.warn(`Failed to download from ${target.url}: ${res.status}`);
                         return 0;
                     }
                     
                     // Получаем размер файла из заголовков
                     const contentLength = res.headers.get('content-length');
                     if (!contentLength) {
-                        console.warn(`No content-length header for ${target.url}`);
+                        // console.warn(`No content-length header for ${target.url}`);
                         return 0;
                     }
                     
@@ -437,7 +437,7 @@ export const useFastSpeedTest = () => {
                     
                     return parseInt(contentLength, 10);
                 } catch (error) {
-                    console.error(`Error downloading from ${target.url}:`, error);
+                    // console.error(`Error downloading from ${target.url}:`, error);
                     return 0;
                 }
             });
@@ -467,7 +467,7 @@ export const useFastSpeedTest = () => {
             // Вычисляем скорость в Mbps (мегабиты в секунду)
             const downloadSpeedMbps = (totalBytes * 8) / (durationSeconds * 1000000);
             
-            console.log(`✅ Тест скачивания Fast.com завершен: ${downloadSpeedMbps.toFixed(2)} Mbps`);
+            // console.log(`✅ Тест скачивания Fast.com завершен: ${downloadSpeedMbps.toFixed(2)} Mbps`);
             
             // Сохраняем результат скачивания
             setDownloadSpeed(downloadSpeedMbps.toFixed(2));
@@ -477,13 +477,13 @@ export const useFastSpeedTest = () => {
             
             // Теперь измеряем скорость загрузки
             if (testUrls.length > 0) {
-                console.log(`Запускаем улучшенное тестирование Upload на ${testUrls[0].url}...`);
+                // console.log(`Запускаем улучшенное тестирование Upload на ${testUrls[0].url}...`);
                 try {
                     const uploadSpeedMbps = await measureUploadImproved(testUrls[0].url);
                     
                     // Если удалось измерить, сохраняем результат
                     if (uploadSpeedMbps > 0) {
-                        console.log(`Тестирование Fast.com Upload завершено: ${uploadSpeedMbps.toFixed(2)} Mbps`);
+                        // console.log(`Тестирование Fast.com Upload завершено: ${uploadSpeedMbps.toFixed(2)} Mbps`);
                         setUploadSpeed(uploadSpeedMbps.toFixed(2));
                     } else {
                         // Если всё же не удалось измерить, используем несколько источников для оценки
@@ -491,7 +491,7 @@ export const useFastSpeedTest = () => {
                         const standardUploadSpeed = await measureUpload(testUrls[0].url);
                         
                         if (standardUploadSpeed > 0) {
-                            console.log(`Стандартное измерение Upload: ${standardUploadSpeed.toFixed(2)} Mbps`);
+                            // console.log(`Стандартное измерение Upload: ${standardUploadSpeed.toFixed(2)} Mbps`);
                             setUploadSpeed(standardUploadSpeed.toFixed(2));
                         } else {
                             // 2. Если и это не удалось, используем более сложную оценку
@@ -503,12 +503,12 @@ export const useFastSpeedTest = () => {
                             
                             // Берем среднее значение
                             const estimatedUploadSpeed = downloadSpeedMbps * 0.4;
-                            console.log(`Не удалось измерить Upload. Используем оценку: ${estimatedUploadSpeed.toFixed(2)} Mbps`);
+                            // console.log(`Не удалось измерить Upload. Используем оценку: ${estimatedUploadSpeed.toFixed(2)} Mbps`);
                             setUploadSpeed(estimatedUploadSpeed.toFixed(2));
                         }
                     }
                 } catch (error) {
-                    console.error(`Ошибка при измерении Upload скорости:`, error);
+                    // console.error(`Ошибка при измерении Upload скорости:`, error);
                     // Используем приблизительную оценку
                     const estimatedUploadSpeed = downloadSpeedMbps * 0.4;
                     setUploadSpeed(estimatedUploadSpeed.toFixed(2));
@@ -518,7 +518,7 @@ export const useFastSpeedTest = () => {
             setProgress(100);
             return downloadSpeedMbps;
         } catch (error) {
-            console.error('Error during Fast.com speed test:', error);
+            // console.error('Error during Fast.com speed test:', error);
             return null;
         } finally {
             testInProgressRef.current = false;

@@ -214,29 +214,29 @@ const SpeedTestContent: React.FC = () => {
     }) => {
       // Проверяем, были ли результаты уже сохранены
       if (resultsSaved) {
-        console.log("⏭️ Результаты уже были сохранены, пропускаем");
+        // console.log("⏭️ Результаты уже были сохранены, пропускаем");
         return;
       }
 
-      console.log("💾 Сохранение результатов теста");
-      console.log("📋 Финальные результаты:", {
-        download: `${results.download.value.toFixed(2)} Mbps (${
-          results.download.source
-        })`,
-        upload: `${results.upload.value.toFixed(2)} Mbps (${
-          results.upload.source
-        })`,
-        ping: `${results.ping.value.toFixed(2)} ms (${results.ping.source})`,
-        jitter: `${results.jitter.value.toFixed(2)} ms (${
-          results.jitter.source
-        })`,
-      });
+      // console.log("💾 Сохранение результатов теста");
+      // console.log("📋 Финальные результаты:", {
+      //   download: `${results.download.value.toFixed(2)} Mbps (${
+      //     results.download.source
+      //   })`,
+      //   upload: `${results.upload.value.toFixed(2)} Mbps (${
+      //     results.upload.source
+      //   })`,
+      //   ping: `${results.ping.value.toFixed(2)} ms (${results.ping.source})`,
+      //   jitter: `${results.jitter.value.toFixed(2)} ms (${
+      //     results.jitter.source
+      //   })`,
+      // });
 
       try {
         // Получаем информацию о сервере
         const apiServer =
           process.env.NEXT_PUBLIC_API_SERVERS || "http://localhost:3001";
-        console.log("🔍 Получение информации о сервере...");
+        // console.log("🔍 Получение информации о сервере...");
 
         const serverInfoResponse = await fetch(
           `${apiServer}/speedtest/server-info`
@@ -306,7 +306,7 @@ const SpeedTestContent: React.FC = () => {
         });
 
         if (saveResponse.ok) {
-          console.log("Результаты успешно сохранены");
+          // console.log("Результаты успешно сохранены");
           setResultsSaved(true);
         } else {
           console.error(
@@ -329,37 +329,13 @@ const SpeedTestContent: React.FC = () => {
       upload: { value: number; source: string };
       jitter: { value: number; source: string };
     }) => {
-      console.log("Final results calculated:", results);
+      // console.log("Final results calculated:", results);
 
-      // Всегда заменяем результаты пинга и джиттера на данные улучшенного теста, если они доступны
-      if (
-        enhancedPingResult &&
-        typeof enhancedPingResult.avg === "number" &&
-        typeof enhancedPingResult.jitter === "number"
-      ) {
-        const modifiedResults = {
-          // Оставляем исходные результаты для скорости загрузки и выгрузки
-          download: results.download,
-          upload: results.upload,
-          // Заменяем пинг и джиттер на результаты улучшенного теста
-          ping: {
-            value: enhancedPingResult.avg,
-            source: "Enhanced Ping Test",
-          },
-          jitter: {
-            value: enhancedPingResult.jitter,
-            source: "Enhanced Ping Test",
-          },
-        };
-
-        console.log("Using enhanced ping results:", modifiedResults);
-        setFinalResults(modifiedResults);
-      } else {
-        // Если улучшенный тест не доступен, используем исходные результаты
-        setFinalResults(results);
-      }
+      // Используем результаты, которые были уже модифицированы в EnhancedCorrectedResults
+      // Это гарантирует, что отображаемые значения и сохраняемые значения будут одинаковыми
+      setFinalResults(results);
     },
-    [enhancedPingResult]
+    []
   );
 
   // 3. И только после этого идет функция runAllTests
@@ -371,7 +347,7 @@ const SpeedTestContent: React.FC = () => {
     // Сбрасываем флаг сохранения
     setResultsSaved(false);
 
-    console.log("Running all speed tests...");
+    // console.log("Running all speed tests...");
 
     try {
       // Сначала запускаем тест улучшенного пинга и ждем небольшое время
@@ -399,10 +375,10 @@ const SpeedTestContent: React.FC = () => {
         fastPromise,
       ]);
 
-      console.log("All tests completed:");
-      console.log("- Own algorithm:", ownResult);
-      console.log("- LibreSpeed:", libreResult);
-      console.log("- Fast.com:", fastResult);
+      // console.log("All tests completed:");
+      // console.log("- Own algorithm:", ownResult);
+      // console.log("- LibreSpeed:", libreResult);
+      // console.log("- Fast.com:", fastResult);
 
       // Остальные данные будут обработаны в handleResultsCalculated
     } catch (error) {
@@ -420,10 +396,10 @@ const SpeedTestContent: React.FC = () => {
   useEffect(() => {
     // Проверяем, что все тесты завершены и есть финальные результаты
     if (!isTesting && finalResults && !resultsSaved) {
-      console.log(
-        "Все тесты завершены, сохраняем финальные результаты:",
-        finalResults
-      );
+      // console.log(
+      //   "Все тесты завершены, сохраняем финальные результаты:",
+      //   finalResults
+      // );
       saveTestResults(finalResults);
     }
   }, [isTesting, finalResults, resultsSaved, saveTestResults]);
@@ -576,11 +552,11 @@ const SpeedTestContent: React.FC = () => {
         </Card>
       </Grid.Col>
 
-      {/* Скрытый блок RychlostNet Test Results */}
+      {/* Скрытый блок OdmerajSi Test Results */}
       <Grid.Col span={12} style={{ display: "none" }}>
         <Card withBorder radius="md" className={classes.card}>
           <Group justify="space-between">
-            <Text className={classes.title}>RychlostNet Test Results</Text>
+            <Text className={classes.title}>OdmerajSi Test Results</Text>
           </Group>
           <SpeedTestResult networkStats={customSpeedStats} />
         </Card>

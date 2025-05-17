@@ -59,11 +59,11 @@ const SpeedTestHistoryComponent: React.FC = () => {
     if (user) {
       const userIsAdmin = user.role === "ADMIN";
       setIsAdmin(userIsAdmin);
-      console.log("User role from session:", {
-        isAdmin: userIsAdmin,
-        role: user.role,
-        name: user.name,
-      });
+      // console.log("User role from session:", {
+      //   isAdmin: userIsAdmin,
+      //   role: user.role,
+      //   name: user.name,
+      // });
     }
   }, [user]);
 
@@ -88,11 +88,11 @@ const SpeedTestHistoryComponent: React.FC = () => {
           timestamp: new Date(item.timestamp),
         }));
 
-        console.log("History data:", formattedData);
+        // console.log("History data:", formattedData);
 
         setData(formattedData);
       } catch (error) {
-        console.error("Error fetching history:", error);
+        // console.error("Error fetching history:", error);
         setError(
           error instanceof Error ? error.message : "Failed to load history"
         );

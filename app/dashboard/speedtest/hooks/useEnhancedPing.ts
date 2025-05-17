@@ -22,8 +22,8 @@ export const useEnhancedPing = () => {
     setPingResult(enhancedResult);
     
     // Логируем для отладки
-    console.log("✅ Результаты улучшенного пинг-теста:", enhancedResult);
-    console.log("📊 Все измерения:", enhancedResult.pingDetails.map(p => p + " мс").join(", "));
+    // console.log("✅ Результаты улучшенного пинг-теста:", enhancedResult);
+    // console.log("📊 Все измерения:", enhancedResult.pingDetails.map(p => p + " мс").join(", "));
     
     return enhancedResult;
   }, []);
@@ -108,7 +108,7 @@ export const useEnhancedPing = () => {
       return result;
       
     } catch (error) {
-      console.error("❌ Ошибка при измерении пинга:", error);
+      // console.error("❌ Ошибка при измерении пинга:", error);
       return null;
     } finally {
       setIsRunning(false);

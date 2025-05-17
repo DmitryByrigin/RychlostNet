@@ -119,7 +119,7 @@ export function DashboardHeader() {
                     </Link>
 
                     <Text component={Link} href="/dashboard/speedtest" size="xl" style={{ marginLeft: rem(10), fontWeight: 700, fontStyle: 'italic' }}>
-                        RýchlosťNet
+                        OdmerajSi
                     </Text>
                 </Container>
             {/*)}*/}

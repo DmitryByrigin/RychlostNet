@@ -84,7 +84,7 @@ export default function RegisterPage(props: PaperProps) {
         <Center style={{height: '100vh'}}>
             <Paper radius="md" p="xl" withBorder {...paperProps}>
                 <Text size="lg" fw={500}>
-                    Welcome to <Text component={Link} href="/" style={{ fontWeight: 700, color: '#1c7ed6' }}>RýchlosťNet</Text>, login with
+                    Welcome to <Text component={Link} href="/" style={{ fontWeight: 700, color: '#1c7ed6' }}>OdmerajSi</Text>, login with
                 </Text>
 
 

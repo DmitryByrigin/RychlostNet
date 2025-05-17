@@ -46,12 +46,12 @@ export const useSpeedTest = () => {
                             return;
                         }
                     } catch (e) {
-                        console.warn('Failed to parse server cache:', e);
+                        // console.warn('Failed to parse server cache:', e);
                     }
                 }
                 
                 // Если нет кэша или кэш устарел, делаем запрос
-                console.log('Fetching fresh server info in useSpeedTest...');
+                // console.log('Fetching fresh server info in useSpeedTest...');
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/server-info`);
                 
                 if (response.ok) {
@@ -88,7 +88,7 @@ export const useSpeedTest = () => {
                     }
                 }
             } catch (error) {
-                console.error('Ошибка при загрузке списка серверов:', error);
+                // console.error('Ошибка при загрузке списка серверов:', error);
             }
         };
         
@@ -105,7 +105,7 @@ export const useSpeedTest = () => {
             // Определяем URL для тестирования пинга
             // Используем напрямую эндпоинт бэкенда для более точного измерения
             const pingEndpoint = `${process.env.NEXT_PUBLIC_API_SERVERS}/speedtest/ping`;
-            console.log('🔄 Измерение пинга к эндпоинту:', pingEndpoint);
+            // console.log('🔄 Измерение пинга к эндпоинту:', pingEndpoint);
             
             // Увеличиваем количество замеров для более точной статистики
             const pingResults: number[] = [];
@@ -118,7 +118,7 @@ export const useSpeedTest = () => {
                 // Небольшая пауза перед началом настоящих измерений
                 await new Promise(resolve => setTimeout(resolve, 50));
             } catch (error) {
-                console.warn('Ошибка при разогреве соединения:', error);
+                // console.warn('Ошибка при разогреве соединения:', error);
             }
             
             // Выполняем серию HEAD-запросов для более точного измерения пинга
@@ -134,7 +134,7 @@ export const useSpeedTest = () => {
                     const endTime = performance.now();
                     pingResults.push(endTime - startTime);
                 } catch (error) {
-                    console.warn(`Ошибка в итерации ${i} при измерении пинга:`, error);
+                    // console.warn(`Ошибка в итерации ${i} при измерении пинга:`, error);
                 }
                 
                 // Минимальная пауза между запросами
@@ -152,10 +152,10 @@ export const useSpeedTest = () => {
             const bestCount = Math.max(3, Math.floor(sortedResults.length * 0.3));
             const bestResults = sortedResults.slice(0, bestCount);
             
-            console.log('Измерения пинга:', {
-                all: pingResults,
-                best: bestResults
-            });
+            // console.log('Измерения пинга:', {
+            //     all: pingResults,
+            //     best: bestResults
+            // });
             
             // Вычисляем статистику на основе лучших замеров
             const min = bestResults[0];
@@ -172,7 +172,7 @@ export const useSpeedTest = () => {
                 jitter
             };
         } catch (error) {
-            console.error('Ошибка при тестировании пинга:', error);
+            // console.error('Ошибка при тестировании пинга:', error);
             return { min: 0, max: 0, avg: 0, jitter: 0 };
         }
     };
@@ -202,7 +202,7 @@ export const useSpeedTest = () => {
             
             throw new Error('Не удалось получить скорость загрузки');
         } catch (error) {
-            console.error('Ошибка при тестировании скорости загрузки:', error);
+            // console.error('Ошибка при тестировании скорости загрузки:', error);
             return 0;
         }
     };
@@ -240,7 +240,7 @@ export const useSpeedTest = () => {
             
             throw new Error('Не удалось получить скорость выгрузки');
         } catch (error) {
-            console.error('Ошибка при тестировании скорости выгрузки:', error);
+            // console.error('Ошибка при тестировании скорости выгрузки:', error);
             return 0;
         }
     };
@@ -302,15 +302,15 @@ export const useSpeedTest = () => {
             saveResults(result);
             
             // Оставляем только важные логи для тестирования
-            console.log('✅ Результаты тестирования собственного алгоритма:', {
-                download: `${result.download.toFixed(2)} Mbps`,
-                upload: `${result.upload.toFixed(2)} Mbps`,
-                ping: `${result.ping.avg.toFixed(2)} ms`,
-                jitter: `${result.jitter.toFixed(2)} ms`
-            });
+            // console.log('✅ Результаты тестирования собственного алгоритма:', {
+            //     download: `${result.download.toFixed(2)} Mbps`,
+            //     upload: `${result.upload.toFixed(2)} Mbps`,
+            //     ping: `${result.ping.avg.toFixed(2)} ms`,
+            //     jitter: `${result.jitter.toFixed(2)} ms`
+            // });
             
         } catch (error) {
-            console.error('Ошибка при запуске теста скорости:', error);
+            // console.error('Ошибка при запуске теста скорости:', error);
         } finally {
             setIsTesting(false);
             testInProgressRef.current = false;
@@ -321,7 +321,7 @@ export const useSpeedTest = () => {
     const saveResults = async (result: SpeedTestResultExtended) => {
         try {
             // Просто логируем результаты в консоль, так как эндпоинта нет
-            console.log('Результаты тестирования:', result);
+            // console.log('Результаты тестирования:', result);
             
             // Если нужно в будущем добавить сохранение на сервер
             // await fetch(`${process.env.NEXT_PUBLIC_API_SERVERS}/librespeed/results`, {
@@ -332,7 +332,7 @@ export const useSpeedTest = () => {
             //     body: JSON.stringify(result)
             // });
         } catch (error) {
-            console.error('Ошибка при сохранении результатов:', error);
+            // console.error('Ошибка при сохранении результатов:', error);
         }
     };
     

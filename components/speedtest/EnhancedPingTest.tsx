@@ -67,8 +67,6 @@ export const EnhancedPingTest: React.FC<EnhancedPingTestProps> = ({
         const pingTime = endTime - startTime;
         pings.push(pingTime);
 
-        console.log(`Пинг к ${url}: ${pingTime.toFixed(1)} мс`);
-
         // Небольшая пауза между запросами
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
@@ -84,11 +82,11 @@ export const EnhancedPingTest: React.FC<EnhancedPingTestProps> = ({
       if (pings.length > 3) {
         // Удаляем два последних (самых больших) элемента
         pings.splice(-2);
-        console.log(
-          "Удалены два самых больших результата:",
-          allPings.slice(-2).map((p) => Math.round(p)),
-          "мс"
-        );
+        // console.log(
+        //   "Удалены два самых больших результата:",
+        //   allPings.slice(-2).map((p) => Math.round(p)),
+        //   "мс"
+        // );
       }
 
       // Теперь вычисляем средние значения на основе отфильтрованных данных
@@ -116,7 +114,7 @@ export const EnhancedPingTest: React.FC<EnhancedPingTestProps> = ({
         onPingResult(result);
       }
     } catch (error) {
-      console.error("Ошибка при измерении пинга:", error);
+      // console.error("Ошибка при измерении пинга:", error);
     } finally {
       setIsRunning(false);
     }
